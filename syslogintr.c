@@ -471,14 +471,14 @@ void lua_interp(struct sockaddr_storage *pss,const char *buffer)
   
   if (buffer[0] != '<')
   {
-    fprintf(stderr,"bad input\n");
+    syslog(LOG_DEBUG,"bad input");
     return;
   }
   
   value = strtoul(&buffer[1],&p,10);
   if (*p++ != '>')
   {
-    fprintf(stderr,"bad input\n");
+    syslog(LOG_DEBUG,"bad input");
     return;
   }
   
@@ -618,7 +618,7 @@ void lua_interp(struct sockaddr_storage *pss,const char *buffer)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    fprintf(stderr,"Lua ERROR: (%d) %s\n",rc,err);
+    syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
   }
 }
 
@@ -754,7 +754,7 @@ void load_script(void)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    fprintf(stderr,"Lua ERROR: (%d) %s\n",rc,err);
+    syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
     return;
   }
   
@@ -762,7 +762,7 @@ void load_script(void)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    fprintf(stderr,"Lua ERROR: (%d) %s\n",rc,err);
+    syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
     return;
   }
   
