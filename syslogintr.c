@@ -762,7 +762,7 @@ void load_script(void)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    syslog(LOG_DEBUG,Lua ERROR: (%d) %s",rc,err);
+    syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
     return;
   }
   
