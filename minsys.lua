@@ -1,11 +1,11 @@
 
 function log(msg)
   io.stdout:write(string.format(
-  		"%15.15s | %-8s %6s | %-20.20s | %s | %s\n",
+  		"%15.15s | %-15.15s | %-8s %6s | %s | %s\n",
   		msg.host,
+  		msg.program,
   		msg.facility,
   		msg.level,
-  		msg.program,
   		os.date("%c",msg.timestamp),
   		msg.msg
   	))
