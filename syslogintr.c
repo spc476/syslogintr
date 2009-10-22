@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <time.h>
+#include <errno.h>
 #include <stdbool.h>
 
 #include <netinet/in.h>
@@ -18,6 +19,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <signal.h>
 #include <syslog.h>
 #include <pwd.h>
 #include <grp.h>
@@ -69,6 +71,7 @@ void		drop_privs	(void);
 void		daemon_init	(void);
 void		load_script	(void);
 int		map_str_to_int	(const char *,const char *const [],size_t);
+void		handle_signal	(int);
 
 /******************************************************************/
 
@@ -147,6 +150,9 @@ const char *const c_level[] =
   "debug"
 };
 
+volatile sig_atomic_t mf_sigint;
+volatile sig_atomic_t mf_sigusr1;
+
 /***************************************************************/
 
 int main(int argc,char *argv[])
@@ -155,7 +161,29 @@ int main(int argc,char *argv[])
   ListenNode         log;
   int                queue;
   struct epoll_event ev;
+  struct sigaction   act;
+  struct sigaction   oact;
   int                rc;
+  
+  sigemptyset(&act.sa_mask);
+  act.sa_handler = handle_signal;
+  act.sa_flags   = 0;
+  rc = sigaction(SIGINT,&act,&oact);
+  if (rc == -1)
+  {
+    perror("sigaction(SIGINT)");
+    exit(EXIT_FAILURE);
+  }
+  
+  sigemptyset(&act.sa_mask);
+  act.sa_handler = handle_signal;
+  act.sa_flags   = 0;
+  rc = sigaction(SIGUSR1,&act,&oact);
+  if (rc == -1)
+  {
+    perror("sigaction(SIGUSR1)");
+    exit(EXIT_FAILURE);
+  }
   
   parse_options(argc,argv);
   openlog(g_slident,0,g_slfacility);
@@ -235,9 +263,17 @@ int main(int argc,char *argv[])
     ListenNode         node;
     int                events;
     int                i;
+    
+    if (mf_sigint) break;
+    if (mf_sigusr1)
+    {
+      load_script();
+      mf_sigusr1 = 0;
+    }
 
     events = epoll_wait(queue,list,MAX_EVENTS,-1);
-  
+    if ((events == -1) && (errno == EINTR)) continue;
+    
     for (i = 0 ; i < events ; i++)
     {
       node = list[i].data.ptr;
@@ -257,7 +293,8 @@ int main(int argc,char *argv[])
   close(udp->sock);
   free(udp);
   close(queue);
-
+  closelog();
+  
   return EXIT_SUCCESS;
 }
 
@@ -363,6 +400,7 @@ void event_read(struct epoll_event *ev)
   
   if (bytes == -1)
   {
+    if (errno == EINTR) return;
     perror("recvfrom()");
     return;
   }
@@ -810,4 +848,16 @@ int map_str_to_int(const char *name,const char *const list[],size_t size)
 }
 
 /***********************************************************************/
+
+void handle_signal(int sig)
+{
+  switch(sig)
+  {
+    case SIGINT:  mf_sigint  = 1; break;
+    case SIGUSR1: mf_sigusr1 = 1; break;
+    default: break;
+  }
+}
+
+/**********************************************************************/
 
