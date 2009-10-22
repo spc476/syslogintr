@@ -1,10 +1,10 @@
 
-function main(log)
+function log(msg)
 
-  if log.remote then
-    io.stdout:write(string.format("From: %15s:%d\n",log.host,log.port))
+  if msg.remote then
+    io.stdout:write(string.format("From: %15s:%d\n",msg.host,msg.port))
   else
-    io.stdout:write(string.format("From: %15s\n",log.host))
+    io.stdout:write(string.format("From: %15s\n",msg.host))
   end
 
   io.stdout:write(string.format([[
@@ -17,13 +17,13 @@ function main(log)
 	Msg:      %s
 	
 ]],
-	log.facility,
-	log.level,
-	os.date("%c",log.timestamp),
-	os.date("%c",log.logtimestatmp),
-	log.program,
-	log.pid,
-	log.msg
+	msg.facility,
+	msg.level,
+	os.date("%c",msg.timestamp),
+	os.date("%c",msg.logtimestatmp),
+	msg.program,
+	msg.pid,
+	msg.msg
   ))
 
 end
