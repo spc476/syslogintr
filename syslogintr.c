@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <syslog.h>
 #include <pwd.h>
 #include <grp.h>
 #include <getopt.h>
@@ -40,6 +41,10 @@ enum
   OPT_USER,
   OPT_GROUP,
   OPT_SCRIPT,
+  OPT_FOREGROUND,
+  OPT_LOG_IDENT,
+  OPT_LOG_FACILITY,
+  OPT_LOG_LEVEL,
   OPT_HELP
 };
 
@@ -58,11 +63,12 @@ ListenNode	create_socket	(struct sockaddr *,socklen_t,void (*)(struct epoll_even
 void		event_read	(struct epoll_event *);
 void		default_interp	(struct sockaddr_storage *,const char *);
 void		lua_interp	(struct sockaddr_storage *,const char *);
-/*void		interpret	(const char *);*/
 void		parse_options	(int,char *[]);
 void		usage		(const char *);
 void		drop_privs	(void);
+void		daemon_init	(void);
 void		load_script	(void);
+int		map_str_to_int	(const char *,const char *const [],size_t);
 
 /******************************************************************/
 
@@ -71,26 +77,34 @@ extern int   optind;
 extern int   opterr;
 extern int   optopt;
 
-const char  *g_logfile = "/dev/log";
-int          g_qsize   = MAX_EVENTS;
-int          gf_log    = false;
-int          gf_debug  = false;
-const char  *g_user    = "nobody";
-const char  *g_group   = "nobody";
+const char  *g_logfile     = "/dev/log";
+int          g_qsize       = MAX_EVENTS;
+int          gf_log        = false;
+int          gf_debug      = false;
+int          gf_foreground = false;
+const char  *g_slident     = "sli";
+int          g_slfacility  = LOG_SYSLOG;
+int          g_sllevel     = LOG_WARNING;
+const char  *g_user        = "nobody";
+const char  *g_group       = "nobody";
 const char  *g_luacode;
 lua_State   *g_L;
 void	   (*g_interpret)(struct sockaddr_storage *,const char *) = default_interp;
 
 const struct option c_options[] =
 {
-  { "conn-queue" , required_argument , NULL      , OPT_CONNQUEUE } ,
-  { "devlog"	 , no_argument       , &gf_log   , true	         } ,
-  { "debug"	 , no_argument	     , &gf_debug , true          } ,
-  { "logfile"	 , required_argument , NULL      , OPT_LOGFILE   } ,
-  { "user"	 , required_argument , NULL	 , OPT_USER      } ,
-  { "group"      , required_argument , NULL      , OPT_GROUP     } ,
-  { "help"       , no_argument       , NULL      , OPT_HELP      } ,
-  { NULL         , 0                 , NULL      , 0             }
+  { "conn-queue"   , required_argument , NULL           , OPT_CONNQUEUE } ,
+  { "devlog"	   , no_argument       , &gf_log        , true          } ,
+  { "debug"	   , no_argument       , &gf_debug      , true          } ,
+  { "foreground"   , no_argument       , &gf_foreground , true          } ,
+  { "logfile"	   , required_argument , NULL           , OPT_LOGFILE   } ,
+  { "user"	   , required_argument , NULL	        , OPT_USER      } ,
+  { "group"        , required_argument , NULL           , OPT_GROUP     } ,
+  { "log-facility" , required_argument , NULL           , OPT_LOG_FACILITY } ,
+  { "log-level"    , required_argument , NULL           , OPT_LOG_LEVEL } ,
+  { "log-ident"    , required_argument , NULL           , OPT_LOG_IDENT } ,
+  { "help"         , no_argument       , NULL           , OPT_HELP      } ,
+  { NULL           , 0                 , NULL           , 0             }
 };
 
 const char *const c_facility[] = 
@@ -100,7 +114,7 @@ const char *const c_facility[] =
   "mail",
   "daemon",
   "auth1",
-  "syslogd",
+  "syslog",
   "lpr",
   "news",
   "uucp",
@@ -144,17 +158,23 @@ int main(int argc,char *argv[])
   int                rc;
   
   parse_options(argc,argv);
+  openlog(g_slident,0,g_slfacility);
   
   if (gf_debug)
+  {
+    g_sllevel = LOG_DEBUG;
     usage(argv[0]);
+    syslog(LOG_DEBUG,"Starting program");
+  }    
 
-  
   queue = epoll_create(g_qsize);
   if (queue == -1)
   {
     perror("epoll_create()");
     return EXIT_FAILURE;
   }
+  
+  syslog(LOG_DEBUG,"created epoll queue of size %d",g_qsize);
   
   udp = udp_socket();
   memset(&ev,0,sizeof(ev));
@@ -167,6 +187,8 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
+  syslog(LOG_DEBUG,"created UDP socket");
+  
   if (gf_log)
   {
     log = log_socket();
@@ -178,6 +200,8 @@ int main(int argc,char *argv[])
       perror("epoll_ctl(ADD log)");
       return EXIT_FAILURE;
     }
+    
+    syslog(LOG_DEBUG,"created UNIX socket");
   }
   
   drop_privs();
@@ -199,6 +223,11 @@ int main(int argc,char *argv[])
     g_luacode   = argv[optind];
     load_script();
   }
+  else
+    gf_foreground = true;
+  
+  if (!gf_foreground)
+    daemon_init();
 
   while(true)
   {
@@ -325,6 +354,8 @@ void event_read(struct epoll_event *ev)
   ssize_t                 bytes;
   char                    buffer[BUFSIZ];
   
+  assert(ev != NULL);
+  
   memset(&remote,0,sizeof(remote));
   node    = ev->data.ptr;
   remsize = sizeof(remote);
@@ -344,6 +375,9 @@ void event_read(struct epoll_event *ev)
 
 void default_interp(struct sockaddr_storage *pss,const char *buffer)
 {
+  assert(pss    != NULL);
+  assert(buffer != NULL);
+  
   if (pss->ss_family == AF_INET)
   {
     struct sockaddr_in *r = (struct sockaddr_in *)pss; 
@@ -394,6 +428,9 @@ void lua_interp(struct sockaddr_storage *pss,const char *buffer)
   size_t     i;
   int        rc;
   
+  assert(pss    != NULL);
+  assert(buffer != NULL);
+  
   if (buffer[0] != '<')
   {
     fprintf(stderr,"bad input\n");
@@ -415,7 +452,7 @@ void lua_interp(struct sockaddr_storage *pss,const char *buffer)
   now    = time(NULL);
   localtime_r(&now,&dateread);
   
-  lua_getglobal(g_L,"main");
+  lua_getglobal(g_L,"log");
   lua_newtable(g_L);
 
   lua_pushstring(g_L,"_RAW");	/* don't count on this */
@@ -553,6 +590,9 @@ void parse_options(int argc,char *argv[])
 {
   int option = 0;
   
+  assert(argc >  0);
+  assert(argv != NULL);
+  
   while(true)
   {
     switch(getopt_long_only(argc,argv,"",c_options,&option))
@@ -566,6 +606,15 @@ void parse_options(int argc,char *argv[])
            break;
       case OPT_LOGFILE:
            g_logfile = strdup(optarg);
+           break;
+      case OPT_LOG_FACILITY:
+           g_slfacility = map_str_to_int(optarg,c_facility,MAX_FACILITY) << 3;
+           break;
+      case OPT_LOG_LEVEL:
+           g_sllevel = map_str_to_int(optarg,c_level,MAX_LEVEL);
+           break;
+      case OPT_LOG_IDENT:
+           g_slident = strdup(optarg);
            break;
       case OPT_HELP:
            usage(argv[0]);
@@ -581,21 +630,29 @@ void parse_options(int argc,char *argv[])
 
 void usage(const char *progname)
 {
+  assert(progname != NULL);
+  
   fprintf(
   	stderr,
         "usage: %s [options...] [luafile]\n"
-        "\t--conn-queue n       (%d)\n"
-        "\t--devlog             (false)\n"
-        "\t--debug              (false)\n"
-        "\t--logfile file       (%s)\n"
-        "\t--user uid           (%s)\n"
-        "\t--group gid          (%s)\n"
+        "\t--conn-queue n          (%d)\n"
+        "\t--devlog                (false)\n"
+        "\t--debug                 (false)\n"
+        "\t--logfile file          (%s)\n"
+        "\t--user uid              (%s)\n"
+        "\t--group gid             (%s)\n"
+        "\t--log-facility facility (%s)\n"
+        "\t--log-level level       (%s)\n"
+        "\t--log-ident id          (%s)\n"
         "\t--help\n",
         progname,
         g_qsize,
         g_logfile,
         g_user,
-        g_group
+        g_group,
+        c_facility[g_slfacility >> 3],	/* XXX */
+        c_level[g_sllevel],
+        g_slident
   );
 }
 
@@ -645,6 +702,8 @@ void drop_privs(void)
     perror("setuid()");
     exit(EXIT_FAILURE);
   }
+  
+  syslog(LOG_DEBUG,"dropped privs to %s:%s",g_user,g_group);
 }
 
 /*************************************************************************/
@@ -668,7 +727,87 @@ void load_script(void)
     fprintf(stderr,"Lua ERROR: (%d) %s\n",rc,err);
     return;
   }
+  
+  syslog(LOG_DEBUG,"loaded script %s\n",g_luacode);
 }
 
 /*************************************************************************/
+
+void daemon_init(void)
+{
+  pid_t pid;
+  
+  pid = fork();
+  if (pid == (pid_t)-1)
+  {
+    perror("fork()");
+    exit(EXIT_FAILURE);
+  }
+  else if (pid != 0)	/* parent goes bye bye */
+    exit(EXIT_SUCCESS);
+
+  setsid();
+  syslog(LOG_DEBUG,"gone into daemon mode");
+  
+  
+  if (g_L)
+  {
+    lua_getglobal(g_L,"io");
+  
+    lua_getfield(g_L,-1,"close");
+    lua_getfield(g_L,-2,"stdin");
+    lua_call(g_L,1,0);
+    
+    lua_getfield(g_L,-1,"close");
+    lua_getfield(g_L,-2,"stdout");
+    lua_call(g_L,1,0);
+    
+    lua_getfield(g_L,-1,"close");
+    lua_getfield(g_L,-2,"stderr");
+    lua_call(g_L,1,0);
+    
+    close(STDERR_FILENO);
+    close(STDOUT_FILENO);
+    close(STDIN_FILENO);
+    
+    lua_getfield(g_L,-1,"open");
+    lua_pushstring(g_L,"/dev/null");
+    lua_pushstring(g_L,"r");
+    lua_call(g_L,2,1);
+    lua_setfield(g_L,-2,"stdin");
+    
+    lua_getfield(g_L,-1,"open");
+    lua_pushstring(g_L,"/dev/null");
+    lua_pushstring(g_L,"w");
+    lua_call(g_L,2,1);
+    lua_setfield(g_L,-2,"stdout");
+    
+    lua_getfield(g_L,-1,"open");
+    lua_pushstring(g_L,"/dev/null");
+    lua_pushstring(g_L,"w");
+    lua_call(g_L,2,1);
+    lua_setfield(g_L,-2,"stderr");
+    
+    lua_pop(g_L,lua_gettop(g_L));
+    syslog(LOG_DEBUG,"reopened io.stdin, io.stdout and io.stderr");
+  }
+}
+
+/***********************************************************************/
+
+int map_str_to_int(const char *name,const char *const list[],size_t size)
+{
+  assert(name != NULL);
+  assert(list != NULL);
+  assert(size >  0);
+  
+  for (size_t i = 0 ; i < size ; i++)
+  {
+    if (strcmp(name,list[i]) == 0)
+      return i;
+  }
+  return -1;
+}
+
+/***********************************************************************/
 
