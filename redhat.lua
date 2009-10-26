@@ -1,10 +1,36 @@
 
-messages = io.open("/var/log/messages","a") or io.stdout
-secure   = io.open("/var/log/secure"  ,"a") or io.stdout
-maillog  = io.open("/var/log/maillog" ,"a") or io.stdout
-cron     = io.open("/var/log/cron"    ,"a") or io.stdout
-spooler  = io.open("/var/log/spooler" ,"a") or io.stdout
-boot     = io.open("/var/log/boot"    ,"a") or io.stdout
+-- **********************************************************************
+
+function closefiles()
+  messages:close()
+  secure:close()
+  maillog:close()
+  cron:close()
+  spooler:close()
+  boot:close()
+end
+
+-- *********************************************************************
+
+function openfiles()
+  messages = io.open("/var/log/messages","a") or io.stdout
+  secure   = io.open("/var/log/secure"  ,"a") or io.stdout
+  maillog  = io.open("/var/log/maillog" ,"a") or io.stdout
+  cron     = io.open("/var/log/cron"    ,"a") or io.stdout
+  spooler  = io.open("/var/log/spooler" ,"a") or io.stdout
+  boot     = io.open("/var/log/boot"    ,"a") or io.stdout
+end
+
+openfiles()
+
+-- *********************************************************************
+
+function restart()	-- we don't support this yet
+  closefiles()
+  openfiles()
+end
+
+signal(SIGUSR2,restart)
 
 -- *********************************************************************
 
@@ -78,4 +104,6 @@ function log(msg)
     logfile(msg,boot)
   end
 end
+
+-- ********************************************************************
 
