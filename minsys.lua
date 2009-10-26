@@ -9,4 +9,5 @@ function log(msg)
   		os.date("%c",msg.timestamp),
   		msg.msg
   	))
+  io.stdout:flush()
 end
