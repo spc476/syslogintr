@@ -25,12 +25,10 @@ openfiles()
 
 -- *********************************************************************
 
-function restart()	-- we don't support this yet
+function user_signal()
   closefiles()
   openfiles()
 end
-
-signal(SIGUSR2,restart)
 
 -- *********************************************************************
 
