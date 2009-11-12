@@ -198,7 +198,6 @@ const struct option c_options[] =
   { "facility"     , required_argument , NULL           , OPT_LOG_FACILITY } ,
   { "ident"        , required_argument , NULL           , OPT_LOG_IDENT } ,
   { "help"         , no_argument       , NULL           , OPT_HELP      } ,
-  
   { NULL           , 0                 , NULL           , 0             }
 };
 
