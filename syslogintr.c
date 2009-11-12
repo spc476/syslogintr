@@ -1,3 +1,78 @@
+/*********************************************************************
+*
+* Copyright 2009 by Sean Conner.  All Rights Reserved.
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2
+* of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+*
+* Comments, questions and criticisms can be sent to: sean@conman.org
+*
+*********************************************************************/
+
+/*******************************************************************
+*
+* SyslogInterpreter - a syslog replacement.
+*
+* This binds to the various syslog sockets, collects syslog requests,
+* and then passes them on to a Lua function for handling.  The C code
+* will construct a Lua table with the following fields:
+*
+*	version		integer = 0
+*	facility	string
+*	level		string
+*	timestamp	as from os.time()
+*	logtimestamp	as from os.time() [1]
+*	pid		integer (0 if not available) [2]
+*	program		string ("" if not available) [3]
+*	msg		actual string
+*	remote		boolean
+*	host		string [4]
+*	port		integer (0 if not available) [5]
+*
+* and then pass it to a Lua function called log().  That function can then
+* do whatever it wants with the information.
+*
+* Sending this program a SIGUSR1 will cause it to reload the given script,
+* meaning you can extend the script, then have the changes take affect
+* without restarting the program.
+*
+* Sending this program a SIGUSR2 will cause it to look for a Lua function
+* called user_signal() and call that.  user_signal() has no parameters,
+* and returns no parameters.
+*
+* You can also schedule a function to run periodically with the Lua 
+* function alarm(n).  The pameter is either a number, which is the number 
+* of seconds between invocations of the supplied alarm_handler() function,
+* or a string, which has a format of "<number>s" (for number of seconds), 
+* "<number>m" (for number of minutes), "<number>h" (for number of hours)
+* or "<number>d" (for number of days).  The functino alarm_handler()
+* takes no parameters, nor returns any paramters.
+*
+* [1]	if the incoming syslog request has a timestamp, this will contain
+*	it, otherwise, it's equal to the timestamp field.
+*
+* [2]	if the incoming syslog request has a pid field.
+*
+* [3]	if the incoming syslog request has a program field.
+*
+* [4]	IP address (IPv4 or IPv6) of the request.  If it's from the local
+*	socket (defaults to "/dev/log" under Linux) this will be the
+*	string "(localsocket)".
+*
+* [5]	Remote port of the request, or 0 if from the localsocket.
+*
+************************************************************************/
 
 #define _GNU_SOURCE
 
