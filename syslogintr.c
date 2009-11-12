@@ -88,6 +88,7 @@ void		load_script		(void);
 int		map_str_to_int		(const char *,const char *const [],size_t);
 void		handle_signal		(int);
 void		set_signal_handler	(int,void (*)(int));
+int		syslogintr_alarm	(lua_State *);
 
 /******************************************************************/
 
@@ -97,6 +98,7 @@ extern int   opterr;
 extern int   optopt;
 
 int          g_queue;
+unsigned int g_alarm;
 const char  *g_slident     = LOG_IDENT;
 int          g_slfacility  = LOG_SYSLOG;
 const char  *g_luacode     = LUA_CODE;
@@ -113,7 +115,7 @@ const struct option c_options[] =
   { "ipv4"	   , optional_argument , NULL		, OPT_IPv4	} ,
   { "ip6"	   , optional_argument , NULL		, OPT_IPv6	} ,
   { "ipv6"	   , optional_argument , NULL		, OPT_IPv6	} ,
-  { "local"	   , optional_argument , NULL		, OPT_LOCAL     } ,  
+  { "local"	   , optional_argument , NULL		, OPT_LOCAL     } ,
   { "debug"	   , no_argument       , &gf_debug      , true          } ,
   { "foreground"   , no_argument       , &gf_foreground , true          } ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
@@ -167,6 +169,8 @@ const char *const c_level[] =
 
 volatile sig_atomic_t mf_sigint;
 volatile sig_atomic_t mf_sigusr1;
+volatile sig_atomic_t mf_sigusr2;
+volatile sig_atomic_t mf_sigalarm;
 
 /***************************************************************/
 
@@ -174,6 +178,8 @@ int main(int argc,char *argv[])
 {
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
+  set_signal_handler(SIGUSR2,handle_signal);
+  set_signal_handler(SIGALRM,handle_signal);
   
   g_queue = epoll_create(MAX_EVENTS);
   if (g_queue == -1)
@@ -201,6 +207,7 @@ int main(int argc,char *argv[])
   
   lua_gc(g_L,LUA_GCSTOP,0);
   luaL_openlibs(g_L);
+  lua_register(g_L,"alarm",syslogintr_alarm);
   lua_gc(g_L,LUA_GCRESTART,0);
   
   if (optind < argc)
@@ -219,10 +226,49 @@ int main(int argc,char *argv[])
     int                i;
     
     if (mf_sigint) break;
+
     if (mf_sigusr1)
     {
       load_script();
       mf_sigusr1 = 0;
+    }
+
+    if (mf_sigusr2)
+    {
+      mf_sigusr2 = 0;
+      lua_getglobal(g_L,"user_signal");
+      if (lua_isfunction(g_L,1))
+      {
+        int rc = lua_pcall(g_L,0,0,0);        
+        if (rc != 0)
+        {
+          const char *err = lua_tostring(g_L,1);
+          syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
+        }
+      }
+      else
+        lua_pop(g_L,1);
+    }
+    
+    if (mf_sigalarm)
+    {
+      mf_sigalarm = 0;
+      lua_getglobal(g_L,"alarm_handler");
+      if (lua_isfunction(g_L,1))
+      {
+        int rc = lua_pcall(g_L,0,0,0);
+        if (rc != 0)
+        {
+          const char *err = lua_tostring(g_L,1);
+          syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
+        }
+        alarm(g_alarm);
+      }
+      else
+      {
+        lua_pop(g_L,1);
+        syslog(LOG_ERR,"Alarm set, but no action when trigger!");
+      }
     }
 
     events = epoll_wait(g_queue,list,MAX_EVENTS,-1);
@@ -322,6 +368,7 @@ void local_socket(const char *taddr)
   
   ev.events   = EPOLLIN;
   ev.data.ptr = ls;
+  
   rc = epoll_ctl(g_queue,EPOLL_CTL_ADD,ls->sock,&ev);
   if (rc == -1)
     perror("epoll_ctl(ADD local)");
@@ -832,8 +879,10 @@ void handle_signal(int sig)
 {
   switch(sig)
   {
-    case SIGINT:  mf_sigint  = 1; break;
-    case SIGUSR1: mf_sigusr1 = 1; break;
+    case SIGINT:  mf_sigint   = 1; break;
+    case SIGUSR1: mf_sigusr1  = 1; break;
+    case SIGUSR2: mf_sigusr2  = 1; break;
+    case SIGALRM: mf_sigalarm = 1; break;
     default: break;
   }
 }
@@ -859,3 +908,37 @@ void set_signal_handler(int sig,void (*handler)(int))
 
 /**************************************************************************/
 
+int syslogintr_alarm(lua_State *L)
+{
+  int pcount;
+  
+  pcount = lua_gettop(L);
+  if (pcount == 0)
+    return luaL_error(L,"not enough arguments");
+  else if (pcount > 1)
+    return luaL_error(L,"too many arguments");
+  
+  if (lua_isnumber(L,1))
+    g_alarm = lua_tointeger(L,1);
+  else if (lua_isstring(L,1))
+  {
+    const char *v = lua_tostring(L,1);
+    char       *p;
+    
+    g_alarm = strtoul(v,&p,10);
+    switch(*p)
+    {
+      case 's': break;
+      case 'm': g_alarm *=    60; break;
+      case 'h': g_alarm *=  3600; break;
+      case 'd': g_alarm *= 86400; break;
+      default:  break;
+    }
+  }
+  
+  alarm(g_alarm);
+  lua_pop(L,1);
+  return 0;
+}
+
+/***********************************************************************/
