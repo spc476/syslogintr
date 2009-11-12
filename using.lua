@@ -3,22 +3,16 @@ if blocked == nil then
   blocked = {}
 end
 
-if logfile == nil then
-  logfile = io.open("/tmp/log","a")
-  if logfile == nil then
-    logfile = io.stdout;
-  end
-end
+logfile = io.open("/tmp/log","a") or io.stdout;
 
 alarm("60m")
 
 -- *******************************************************
 
 function user_signal()
-  logfile:close()
-  logfile = io.open("/tmp/log","a")
-  if logfile == nil then
-    logfile = io.stdout;
+  if logfile ~= io.stdout then
+    logfile:close()
+    logfile = io.open("/tmp/log","a") or io.stdout;
   end
   
   log{
