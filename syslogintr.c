@@ -38,7 +38,7 @@
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
-*	port		integer (0 if not available) [5]
+*	port		integer (-1 if not available) [5]
 *
 * and then pass it to a Lua function called log().  That function can then
 * do whatever it wants with the information.
