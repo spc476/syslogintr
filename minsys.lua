@@ -34,7 +34,7 @@
 -- *	msg		string
 -- *	remote		boolean (true if from network socket)
 -- *	host		string [4]
--- *	port		integer (0 if not available [5])
+-- *	port		integer (-1 if not available [5])
 -- *
 -- *	[1]	if the incoming syslog request has a timestamp, this
 -- *		will contain it, otherwise it's equal to the timestamp
@@ -46,9 +46,9 @@
 -- *
 -- *	[4]	IP address (v4 or v6) of the request.  If it's from
 -- *		the local socket (defaults to "/dev/log" under Linux)
--- *		this will be the string "(localsocket)"
+-- *		this will be the filename of the localsocket.
 -- *
--- *	[5]	Remote port of the request, or 0 if from the localsocket.
+-- *	[5]	Remote port of the request, or -1 if from a localsocket.
 -- *
 -- ****************************************************************
 
