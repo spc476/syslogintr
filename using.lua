@@ -39,7 +39,8 @@ function user_signal()
   end
   
   log{
-  	host      = "(localsocket)",
+  	host      = "(internal)",
+  	remote    = false,
   	program   = "minsys",
   	facility  = "daemon",
   	level     = "debug",
@@ -53,7 +54,8 @@ end
 function alarm_handler()
   if #blocked == 0 then
     log{
-  	host       = "(localsocket)",
+  	host       = "(internal)",
+  	remote     = false,
   	program    = "minsys",
   	facility   = "daemon",
   	level      = "debug",
@@ -70,10 +72,11 @@ function alarm_handler()
       local ip = blocked[1].ip
       
       log{
-      		host = "(localsocket)",
-      		program = "minsys",
-      		facility = "daemon",
-      		level    = "debug",
+      		host      = "(internal)",
+      		remote    = false,
+      		program   = "minsys",
+      		facility  = "daemon",
+      		level     = "debug",
       		timestamp = now,
       		msg       = "Removing IP block: " .. ip
       	}
@@ -89,7 +92,7 @@ end
 -- ******************************************************
 
 function log(msg)  
-  if msg.host == "(localsocket)" or msg.level ~= "debug" then
+  if msg.remote == false or msg.level ~= "debug" then
     writelog(msg)
     sshd(msg)
   end
@@ -113,16 +116,17 @@ end
 -- ********************************************************
 
 function sshd(msg)
-  if msg.program  ~= "sshd"          then return end
-  if msg.host     ~= "(localsocket)" then return end
-  if msg.facility ~= "auth2"         then return end
-  if msg.level    ~= "info"          then return end
+  if msg.program  ~= "sshd"       then return end
+  if msg.host     ~= "(internal)" then return end
+  if msg.facility ~= "auth2"      then return end
+  if msg.level    ~= "info"       then return end
   
   local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+) .*");
   if ip == nil then return end
   
   writelog{
-  	host      = "(localsocket)",
+  	host      = "(internal)",
+  	remote    = false,
   	program   = "minsys",
   	facility  = "daemon",
   	level     = "debug",
@@ -140,7 +144,8 @@ function sshd(msg)
     local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
     
     writelog{
-    	host      = "(localsocket)",
+    	host      = "(internal)",
+    	remote    = false,
     	program   = "minsys",
     	facility  = "daemon",
     	level     = "debug",
@@ -151,7 +156,8 @@ function sshd(msg)
     os.execute(cmd)
     
     writelog{
-    	host      = "(localsocket)",
+    	host      = "(internal)",
+    	remote    = false,
     	program   = "minsys",
     	facility  = "daemon",
     	level     = "info",
@@ -167,7 +173,8 @@ end
 -- *******************************************************
 
 log{
-	host      = "(localsocket)",
+	host      = "(internal)",
+	remote    = false,
 	program   = "minsys",
 	facility  = "daemon",
 	level     = "debug",
