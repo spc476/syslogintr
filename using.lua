@@ -1,9 +1,32 @@
+-- ***************************************************************
+--
+-- Copyright 2009 by Sean Conner.  All Rights Reserved.
+-- 
+-- This program is free software; you can redistribute it and/or
+-- modify it under the terms of the GNU General Public License
+-- as published by the Free Software Foundation; either version 2
+-- of the License, or (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program; if not, write to the Free Software
+-- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+--
+-- Comments, questions and criticisms can be sent to: sean@conman.org
+--
+-- ********************************************************************
 
 if blocked == nil then
   blocked = {}
 end
 
-logfile = io.open("/tmp/log","a") or io.stdout;
+if logfile == nil then
+  logfile = io.open("/tmp/log","a") or io.stdout;
+end
 
 alarm("60m")
 
@@ -28,14 +51,39 @@ end
 -- *******************************************************
 
 function alarm_handler()
-  log{
+  if #blocked == 0 then
+    log{
   	host       = "(localsocket)",
   	program    = "minsys",
   	facility   = "daemon",
   	level      = "debug",
   	timestatmp = os.time(),
   	msg        = "Alarm clock---snooze button!"
-  }
+    }
+    return
+  end
+  
+  local now = os.time()
+  
+  while #blocked > 0 do
+    if now - blocked[1].when > 3600 then
+      local ip = blocked[1].ip
+      
+      log{
+      		host = "(localsocket)",
+      		program = "minsys",
+      		facility = "daemon",
+      		level    = "debug",
+      		timestamp = now,
+      		msg       = "Removing IP block: " .. ip
+      	}
+      	
+      blocked[ip] = nil
+      table.remove(blocked,1)
+      os.execute("iptables --table filter -D INPUT 1")
+      break;
+    end
+  end
 end
 
 -- ******************************************************
@@ -90,7 +138,7 @@ function sshd(msg)
   
   if blocked[ip] == 5 then
     local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
-
+    
     writelog{
     	host      = "(localsocket)",
     	program   = "minsys",
@@ -101,7 +149,6 @@ function sshd(msg)
     }
     
     os.execute(cmd)
-    blocked[ip] = nil
     
     writelog{
     	host      = "(localsocket)",
@@ -111,6 +158,9 @@ function sshd(msg)
     	timestamp = os.time(),
     	msg       = "Blocked " .. ip .. " from SSH"
     }
+    
+    table.insert(blocked,{ ip = ip , when = msg.timestamp} )
+
   end
 end
 
