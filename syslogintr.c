@@ -68,7 +68,7 @@
 *
 * [4]	IP address (IPv4 or IPv6) of the request.  If it's from the local
 *	socket (defaults to "/dev/log" under Linux) this will be the
-*	string "(localsocket)".
+*	filename of the localsocket.
 *
 * [5]	Remote port of the request, or 0 if from the localsocket.
 *
@@ -154,7 +154,7 @@ void		ipv6_socket		(const char *);
 void		local_socket		(const char *);
 ListenNode	create_socket		(sockaddr_all *,socklen_t,void (*)(struct epoll_event *));
 void		event_read		(struct epoll_event *);
-void		lua_interp		(sockaddr_all *,const char *);
+void		lua_interp		(sockaddr_all *,sockaddr_all *,const char *);
 void		parse_options		(int,char *[]);
 void		usage			(const char *);
 void		drop_privs		(void);
@@ -523,12 +523,12 @@ void event_read(struct epoll_event *ev)
   }
   
   buffer[bytes] = '\0';
-  lua_interp(&remote,buffer);
+  lua_interp(&node->local,&remote,buffer);
 }
 
 /*********************************************************************/
 
-void lua_interp(sockaddr_all *pss,const char *buffer)
+void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
 {
   struct tm  dateread;
   time_t     now;
@@ -539,6 +539,7 @@ void lua_interp(sockaddr_all *pss,const char *buffer)
   size_t     i;
   int        rc;
   
+  assert(ploc   != NULL);
   assert(pss    != NULL);
   assert(buffer != NULL);
   
@@ -695,7 +696,7 @@ void lua_interp(sockaddr_all *pss,const char *buffer)
     lua_settable(g_L,-3);
     
     lua_pushstring(g_L,"host");
-    lua_pushstring(g_L,"(localsocket)");
+    lua_pushstring(g_L,ploc->sun.sun_path);
     lua_settable(g_L,-3);
     
     lua_pushstring(g_L,"port");
