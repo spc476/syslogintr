@@ -57,7 +57,7 @@ function alarm_handler()
   while #blocked > 0 do
     if now - blocked[1].when < 3600 then return end
     local ip = blocked[1].ip
-    I_log("debug","Removing IP block: " .. ip)      	
+    I_log("info","Removing IP block: " .. ip)      	
     blocked[ip] = nil
     table.remove(blocked,1)
     os.execute("iptables --table filter -D INPUT 1")
