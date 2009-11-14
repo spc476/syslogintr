@@ -38,59 +38,26 @@ function user_signal()
     logfile = io.open("/tmp/log","a") or io.stdout;
   end
   
-  log{
-  	host      = "(internal)",
-  	remote    = false,
-  	program   = "minsys",
-  	facility  = "daemon",
-  	level     = "debug",
-  	timestamp = os.time(),
-  	msg       = "signal received loud and clear and reset logfile"
-  }
+  I_log("debug","signal received loud and clear and reset logfile")
+
 end
 
 -- *******************************************************
 
 function alarm_handler()
   if #blocked == 0 then
-    log{
-  	host       = "(internal)",
-  	remote     = false,
-  	program    = "minsys",
-  	facility   = "daemon",
-  	level      = "debug",
-  	timestatmp = os.time(),
-  	msg        = "Alarm clock---snooze button!"
-    }
+    I_log("debug","Alarm clock---snooze button!")
     return
   end
   
   local now = os.time()
-  
-  log{
-  	host      = "(internal)",
-  	remote    = false,
-  	program   = "minsys",
-  	facility  = "daemon",
-  	level     = "debug",
-  	timestamp = now,
-  	msg       = "About to remove blocks"
-  }
+
+  I_log("debug","About to remove blocks")  
 
   while #blocked > 0 do
     if now - blocked[1].when < 3600 then return end
     local ip = blocked[1].ip
-
-    log{
-      		host      = "(internal)",
-      		remote    = false,
-      		program   = "minsys",
-      		facility  = "daemon",
-      		level     = "debug",
-      		timestamp = now,
-      		msg       = "Removing IP block: " .. ip
-      	}
-      	
+    I_log("debug","Removing IP block: " .. ip)      	
     blocked[ip] = nil
     table.remove(blocked,1)
     os.execute("iptables --table filter -D INPUT 1")
@@ -124,23 +91,15 @@ end
 -- ********************************************************
 
 function sshd(msg)
-  if msg.program  ~= "sshd"       then return end
-  if msg.remote   == true         then return end
-  if msg.facility ~= "auth2"      then return end
-  if msg.level    ~= "info"       then return end
+  if msg.program  ~= "sshd"  then return end
+  if msg.remote   == true    then return end
+  if msg.facility ~= "auth2" then return end
+  if msg.level    ~= "info"  then return end
   
   local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+) .*");
   if ip == nil then return end
   
-  writelog{
-  	host      = "(internal)",
-  	remote    = false,
-  	program   = "minsys",
-  	facility  = "daemon",
-  	level     = "debug",
-  	timestamp = os.time(),
-  	msg       = "Found IP:" .. ip
-  }
+  I_log("debug","Found IP:" .. ip)
 
   if blocked[ip] == nil then
     blocked[ip] = 1
@@ -150,43 +109,27 @@ function sshd(msg)
   
   if blocked[ip] == 5 then
     local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
-    
-    writelog{
-    	host      = "(internal)",
-    	remote    = false,
-    	program   = "minsys",
-    	facility  = "daemon",
-    	level     = "debug",
-    	timestamp = os.time(),
-    	msg       = "Command to block: " .. cmd
-    }
-    
-    os.execute(cmd)
-    
-    writelog{
-    	host      = "(internal)",
-    	remote    = false,
-    	program   = "minsys",
-    	facility  = "daemon",
-    	level     = "info",
-    	timestamp = os.time(),
-    	msg       = "Blocked " .. ip .. " from SSH"
-    }
-    
+    I_log("debug","Command to block: " .. cmd)    
+    os.execute(cmd)    
+    I_log("info","Blocked " .. ip .. " from SSH")
     table.insert(blocked,{ ip = ip , when = msg.timestamp} )
-
   end
 end
 
 -- *******************************************************
 
-log{
-	host      = "(internal)",
-	remote    = false,
-	program   = "minsys",
-	facility  = "daemon",
-	level     = "debug",
-	timestamp = os.time(),
-	msg       = "reloaded script"
-}
+function I_log(level,msg)
+  log{
+  	host      = "(internal)",
+  	remote    = false,
+  	program   = "minsys",
+  	facility  = "daemon",
+  	level     = level,
+  	timestamp = os.time(),
+  	msg       = msg
+  }
+end
 
+-- ******************************************************
+
+I_log("debug","reloaded script")
