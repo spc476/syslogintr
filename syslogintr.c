@@ -621,6 +621,7 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     unsigned long  pid;
     
     b = strchr(p,'[');
+    b = memchr(p,'[',(q - p));
     if (b)
     {
       pid = strtoul(b+1,NULL,10);
