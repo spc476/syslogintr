@@ -67,11 +67,21 @@ function alarm_handler()
   
   local now = os.time()
   
+  log{
+  	host      = "(internal)",
+  	remote    = false,
+  	program   = "minsys",
+  	facility  = "daemon",
+  	level     = "debug",
+  	timestamp = now,
+  	msg       = "About to remove blocks"
+  }
+
   while #blocked > 0 do
-    if now - blocked[1].when > 3600 then
-      local ip = blocked[1].ip
-      
-      log{
+    if now - blocked[1].when < 3600 then return end
+    local ip = blocked[1].ip
+
+    log{
       		host      = "(internal)",
       		remote    = false,
       		program   = "minsys",
@@ -81,11 +91,9 @@ function alarm_handler()
       		msg       = "Removing IP block: " .. ip
       	}
       	
-      blocked[ip] = nil
-      table.remove(blocked,1)
-      os.execute("iptables --table filter -D INPUT 1")
-      break;
-    end
+    blocked[ip] = nil
+    table.remove(blocked,1)
+    os.execute("iptables --table filter -D INPUT 1")
   end
 end
 
