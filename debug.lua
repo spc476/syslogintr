@@ -35,7 +35,7 @@ function log(msg)
 	version      = %d
 	_RAW         = %s
 	host         = %s
-	origin       = %s
+	relay        = %s
 	port         = %d
 	remote       = %s
 	timestamp    = %s
@@ -50,7 +50,7 @@ function log(msg)
 	msg.version,
 	msg._RAW,
 	msg.host,
-	msg.origin,
+	msg.relay,
 	msg.port,
 	tostring(msg.remote),
 	os.date("%c",msg.timestamp),
@@ -63,5 +63,3 @@ function log(msg)
 	
   io.stdout:flush()
 end
-
-	
