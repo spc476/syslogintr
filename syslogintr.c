@@ -38,7 +38,7 @@
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
-*	origin		string  ("" if not available) [6]
+*	relay		string  ("" if not available) [6]
 *	port		integer (-1 if not available) [5]
 *
 * and then pass it to a Lua function called log().  That function can then
@@ -73,8 +73,10 @@
 *
 * [5]	Remote port of the request, or 0 if from the localsocket.
 *
-* [6]	May be part of the original message.  If not part of the
-*	original message, it will be "".
+* [6]	The message is being relayed from an original source.  If that
+*	is the case, then host will be set to the original source, and
+*	relay will be set to the device that sent us the message.  If
+*	the device was the original sender, then relay will be "".
 *
 ************************************************************************/
 
@@ -162,7 +164,7 @@ struct msg
   int              version;
   struct sysstring raw;
   struct sysstring host;
-  struct sysstring origin;
+  struct sysstring relay;
   int              port;
   bool             remote;
   time_t           timestamp;
@@ -552,9 +554,6 @@ void event_read(struct epoll_event *ev)
     return;
   }
   
-  if (bytes > 1024)
-    bytes = 1024;
-  
   buffer[bytes] = '\0';
   
   for (size_t i = 0 ; buffer[i] != '\0'; i++)
@@ -596,7 +595,7 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   msg.timestamp    = now;
   msg.logtimestamp = now;
   msg.program      = c_null;
-  msg.hostname     = c_null;
+  msg.relay        = c_null;
   msg.pid          = 0;
   
   if (pss->ss.sa_family == AF_INET)
@@ -687,22 +686,20 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     b = memchr(p,' ',(size_t)(q - p));
     if (b != NULL)
     {
-      msg.origin.text = p;
-      msg.origin.size = (size_t)(b - p);
+      msg.relay     = msg.host;
+      msg.host.text = p;
+      msg.host.size = (size_t)(b - p);
       p = b + 1;
     }
     
     b = memchr(p,'[',(size_t)(q - p));
     if (b)
-    {
       msg.pid = strtoul(b + 1,NULL,10);
-      *b = '\0';
-    }
-    
-    *q = '\0';
-    
+    else
+      b = q;
+      
     msg.program.text = p;
-    msg.program.size = (size_t)(q - p);
+    msg.program.size = (size_t)(b - p);
     
     for (p = q + 1 ; *p && isspace(*p) ; p++)
       ;      
@@ -720,13 +717,33 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
 
 /***********************************************************************/
 
+#if 0
+  static void clean_string(struct sysstring s)
+  {
+    assert(s.text != NULL);
+    
+    for (size_t i = 0 ; i < s.size ; i++)
+      assert(isprint(s.text[i]));
+  }
+#endif
+
+/**********************************************************************/
+
 void process_msg(const struct msg *const pmsg)
 {
   const char *err;
   int         rc;
   
   assert(pmsg != NULL);
-  
+
+#if 0
+  clean_string(pmsg->raw);
+  clean_string(pmsg->host);
+  clean_string(pmsg->relay);
+  clean_string(pmsg->program);
+  clean_string(pmsg->msg);
+#endif
+
   lua_getglobal(g_L,"log");
   lua_newtable(g_L);
   
@@ -742,8 +759,8 @@ void process_msg(const struct msg *const pmsg)
   lua_pushlstring(g_L,pmsg->host.text,pmsg->host.size);
   lua_settable(g_L,-3);
   
-  lua_pushliteral(g_L,"origin");
-  lua_pushlstring(g_L,pmsg->hostname.text,pmsg->hostname.size);
+  lua_pushliteral(g_L,"relay");
+  lua_pushlstring(g_L,pmsg->relay.text,pmsg->relay.size);
   lua_settable(g_L,-3);
   
   lua_pushliteral(g_L,"port");
