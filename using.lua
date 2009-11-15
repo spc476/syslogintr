@@ -22,6 +22,7 @@
 
 if blocked == nil then
   blocked = {}
+  os.execute("iptables --table filter -F INPUT")
 end
 
 if logfile == nil then
