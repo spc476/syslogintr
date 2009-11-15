@@ -92,11 +92,11 @@ end
 -- ********************************************************
 
 function sshd(msg)
-  if msg.program  ~= "sshd"  then return end
   if msg.remote   == true    then return end
+  if msg.program  ~= "sshd"  then return end
   if msg.facility ~= "auth2" then return end
   if msg.level    ~= "info"  then return end
-  
+
   local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+) .*");
   if ip == nil then return end
   
