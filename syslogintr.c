@@ -33,11 +33,12 @@
 *	level		string
 *	timestamp	as from os.time()
 *	logtimestamp	as from os.time() [1]
-*	pid		integer (0 if not available) [2]
-*	program		string ("" if not available) [3]
+*	pid		integer (0 if not available)  [2]
+*	program		string  ("" if not available) [3]
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
+*	hostname	string  ("" if not available) [6]
 *	port		integer (-1 if not available) [5]
 *
 * and then pass it to a Lua function called log().  That function can then
@@ -62,7 +63,7 @@
 * [1]	if the incoming syslog request has a timestamp, this will contain
 *	it, otherwise, it's equal to the timestamp field.
 *
-* [2]	if the incoming syslog request has a pid field.
+* [2]	if the incoming syslog request has a PID field.
 *
 * [3]	if the incoming syslog request has a program field.
 *
@@ -71,6 +72,9 @@
 *	filename of the localsocket.
 *
 * [5]	Remote port of the request, or 0 if from the localsocket.
+*
+* [6]	May be part of the original message.  If not part of the
+*	original message, it will be "".
 *
 ************************************************************************/
 
@@ -147,6 +151,29 @@ typedef struct listen_node
   sockaddr_all   local;
 } *ListenNode;
 
+struct sysstring
+{
+  size_t      size;
+  const char *text;
+};
+
+struct msg
+{
+  int              version;
+  struct sysstring raw;
+  struct sysstring host;
+  struct sysstring hostname;  
+  int              port;
+  bool             remote;
+  time_t           timestamp;
+  time_t           logtimestamp;
+  struct sysstring program;
+  int              pid;  
+  int              facility;
+  int              level;
+  struct sysstring msg;
+};
+
 /******************************************************************/
 
 void		ipv4_socket		(const char *);
@@ -155,6 +182,7 @@ void		local_socket		(const char *);
 ListenNode	create_socket		(sockaddr_all *,socklen_t,void (*)(struct epoll_event *));
 void		event_read		(struct epoll_event *);
 void		lua_interp		(sockaddr_all *,sockaddr_all *,const char *);
+void		process_msg		(const struct msg *const);
 void		parse_options		(int,char *[]);
 void		usage			(const char *);
 void		drop_privs		(void);
@@ -240,6 +268,8 @@ const char *const c_level[] =
   "info",
   "debug"
 };
+
+struct sysstring c_null = { 0 , "" } ;
 
 volatile sig_atomic_t mf_sigint;
 volatile sig_atomic_t mf_sigusr1;
@@ -522,7 +552,15 @@ void event_read(struct epoll_event *ev)
     return;
   }
   
+  if (bytes > 1024)
+    bytes = 1024;
+  
   buffer[bytes] = '\0';
+  
+  for (size_t i = 0 ; buffer[i] != '\0'; i++)
+    if (iscntrl(buffer[i]))
+      buffer[i] = ' ';
+      
   lua_interp(&node->local,&remote,buffer);
 }
 
@@ -530,6 +568,9 @@ void event_read(struct epoll_event *ev)
 
 void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
 {
+  struct msg msg;
+  char       host[BUFSIZ];
+  char       raw [1025];
   struct tm  dateread;
   time_t     now;
   div_t      faclev;
@@ -543,177 +584,213 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   assert(pss    != NULL);
   assert(buffer != NULL);
   
+  memset(raw,0,sizeof(raw));
+  memcpy(raw,buffer,1024);
+  
+  now = time(NULL);
+  localtime_r(&now,&dateread);
+  
+  msg.version      = 0;
+  msg.raw.size     = strlen(buffer);
+  msg.raw.text     = raw;
+  msg.timestamp    = now;
+  msg.logtimestamp = now;
+  msg.program      = c_null;
+  msg.hostname     = c_null;
+  msg.pid          = 0;
+  
+  if (pss->ss.sa_family == AF_INET)
+  {
+    inet_ntop(AF_INET,&pss->sin.sin_addr,host,INET_ADDRSTRLEN);
+    
+    msg.remote    = true;
+    msg.host.size = strlen(host);
+    msg.host.text = host;
+    msg.port      = ntohs(pss->sin.sin_port);
+  }
+  else if (pss->ss.sa_family == AF_INET6)
+  {
+    inet_ntop(AF_INET6,&pss->sin6.sin6_addr,host,INET6_ADDRSTRLEN);
+    
+    msg.remote    = true;
+    msg.host.size = strlen(host);
+    msg.host.text = host;
+    msg.port      = ntohs(pss->sin6.sin6_port);
+  }
+  else
+  {
+    msg.remote    = false;
+    msg.host.size = strlen(ploc->sun.sun_path);
+    msg.host.text = ploc->sun.sun_path;
+    msg.port      = -1;
+  }
+  
   if (buffer[0] != '<')
   {
-    syslog(LOG_DEBUG,"bad input");
+    msg.facility = 1;	/* LOG_USER */
+    msg.level    = 5;	/* LOG_NOTICE */
+    msg.msg      = msg.raw;
+    
+    process_msg(&msg);
     return;
   }
   
   value = strtoul(&buffer[1],&p,10);
   if (*p++ != '>')
   {
-    syslog(LOG_DEBUG,"bad input");
+    msg.facility = 1;	/* LOG_USER */
+    msg.level    = 5;	/* LOG_NOTICE */
+    msg.msg      = msg.raw;
+    
+    process_msg(&msg);
     return;
   }
   
-  for (i = 0 ; p[i] != '\0' ; i++)
-    if (iscntrl(p[i]))
-      p[i] = ' ';
-
   faclev = div(value,8);
-  now    = time(NULL);
-  localtime_r(&now,&dateread);
   
-  lua_getglobal(g_L,"log");
-  lua_newtable(g_L);
-
-  lua_pushstring(g_L,"_RAW");	/* don't count on this */
-  lua_pushstring(g_L,p);
-  lua_settable(g_L,-3);
-
-  lua_pushstring(g_L,"version");	/* syslog version */
-  lua_pushinteger(g_L,0);		/* RFC3164 = v0   */
-  lua_settable(g_L,-3);			/* RFC5424 = v1   */
+  msg.facility = faclev.quot;
+  msg.level    = faclev.rem;
   
-  lua_pushstring(g_L,"facility");
-  lua_pushstring(g_L,c_facility[faclev.quot]);
-  lua_settable(g_L,-3);
-  
-  lua_pushstring(g_L,"level");
-  lua_pushstring(g_L,c_level[faclev.rem]);
-  lua_settable(g_L,-3);
-  
-  lua_pushstring(g_L,"timestamp");
-  lua_pushinteger(g_L,now);
-  lua_settable(g_L,-3);
-  
-  /*--------------------------------------------
-  ; maybe there's a timestamp at the start,
-  ; maybe there isn't ... try anyway 
-  ;--------------------------------------------*/
+  /*---------------------------------------------
+  ; check for a supplied timestamp.
+  ;---------------------------------------------*/
   
   q = strptime(p,"%B %d %H:%M:%S",&dateread);
   
   if (q)
   {
-    lua_pushstring(g_L,"logtimestatmp");
-    lua_pushinteger(g_L,mktime(&dateread));
-    lua_settable(g_L,-3);
-    
+    msg.logtimestamp = mktime(&dateread);
+    if (*q != ' ')
+    {
+      msg.facility = LOG_USER;
+      msg.level    = LOG_NOTICE;
+      msg.msg      = msg.raw;
+      process_msg(&msg);
+      return;
+    }
     p = q + 1;
   }
-  else
-  {
-    lua_pushstring(g_L,"logtimestamp");
-    lua_pushinteger(g_L,now);
-    lua_settable(g_L,-3);
-  }
   
-  /*---------------------------------------------
-  ; extract program and PID.  If neither exist, 
-  ; set program to "" and PID to 0.
-  ;---------------------------------------------*/
+  /*--------------------------------------------
+  ; check for hostname/program name/pid fields
+  ; (technically, the PID field isn't part of
+  ; RFC3164, and is technically part of the CONTENT
+  ; portion of the message, but hey, a lot of
+  ; Unix programs set it.  So it makes sense.
+  ;-----------------------------------------------*/
   
   q = strchr(p,':');
   if (q)
   {
-    char          *b;
-    unsigned long  pid;
+    char *b;
     
-    b = strchr(p,'[');
-    b = memchr(p,'[',(q - p));
+    b = memchr(p,' ',(size_t)(q - p));
+    if (b != NULL)
+    {
+      msg.hostname.text = p;
+      msg.hostname.size = (size_t)(b - p);
+      p = b + 1;
+    }
+    
+    b = memchr(p,'[',(size_t)(q - p));
     if (b)
     {
-      pid = strtoul(b+1,NULL,10);
+      msg.pid = strtoul(b + 1,NULL,10);
       *b = '\0';
     }
-    else
-      pid = 0;
     
     *q = '\0';
     
-    lua_pushstring(g_L,"program");
-    lua_pushstring(g_L,p);
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"pid");
-    lua_pushinteger(g_L,pid);
-    lua_settable(g_L,-3);
+    msg.program.text = p;
+    msg.program.size = (size_t)(q - p);
     
     for (p = q + 1 ; *p && isspace(*p) ; p++)
-      ;
+      ;      
   }
-  else
-  {
-    lua_pushstring(g_L,"program");
-    lua_pushstring(g_L,"");
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"pid");
-    lua_pushinteger(g_L,0);
-    lua_settable(g_L,-3);
-  }
+  
+  /*---------------------------------------------------
+  ; whatever remains, however small, is the msg.
+  ;---------------------------------------------------*/
+  
+  msg.msg.text = p;
+  msg.msg.size = strlen(p);
+  
+  process_msg(&msg);
+}
 
-  lua_pushstring(g_L,"msg");
-  lua_pushstring(g_L,p);
+/***********************************************************************/
+
+void process_msg(const struct msg *const pmsg)
+{
+  const char *err;
+  int         rc;
+  
+  assert(pmsg != NULL);
+  
+  lua_getglobal(g_L,"log");
+  lua_newtable(g_L);
+  
+  lua_pushliteral(g_L,"version");
+  lua_pushinteger(g_L,pmsg->version);
   lua_settable(g_L,-3);
   
-  if (pss->ss.sa_family == AF_INET)
-  {
-    char buffer[INET_ADDRSTRLEN];
+  lua_pushliteral(g_L,"_RAW");
+  lua_pushlstring(g_L,pmsg->raw.text,pmsg->raw.size);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"host");
+  lua_pushlstring(g_L,pmsg->host.text,pmsg->host.size);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"hostname");
+  lua_pushlstring(g_L,pmsg->hostname.text,pmsg->hostname.size);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"port");
+  lua_pushinteger(g_L,pmsg->port);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"remote");
+  lua_pushboolean(g_L,pmsg->remote);
+  lua_settable(g_L,-3);
     
-    lua_pushstring(g_L,"remote");
-    lua_pushboolean(g_L,true);
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"host");
-    lua_pushstring(g_L,inet_ntop(AF_INET,&pss->sin.sin_addr,buffer,INET_ADDRSTRLEN));
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"port");
-    lua_pushinteger(g_L,ntohs(pss->sin.sin_port));
-    lua_settable(g_L,-3);
-  }
-  else if (pss->ss.sa_family == AF_INET6)
-  {
-    char buffer[INET6_ADDRSTRLEN];
-    
-    lua_pushstring(g_L,"remote");
-    lua_pushboolean(g_L,true);
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"host");
-    lua_pushstring(g_L,inet_ntop(AF_INET6,&pss->sin6.sin6_addr,buffer,INET6_ADDRSTRLEN));
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"port");
-    lua_pushinteger(g_L,ntohs(pss->sin6.sin6_port));
-    lua_settable(g_L,-3);
-  }
-  else
-  {
-    lua_pushstring(g_L,"remote");
-    lua_pushboolean(g_L,false);
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"host");
-    lua_pushstring(g_L,ploc->sun.sun_path);
-    lua_settable(g_L,-3);
-    
-    lua_pushstring(g_L,"port");
-    lua_pushinteger(g_L,-1);
-    lua_settable(g_L,-3);
-  }
+  lua_pushliteral(g_L,"timestamp");
+  lua_pushinteger(g_L,pmsg->timestamp);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"logtimestamp");
+  lua_pushinteger(g_L,pmsg->logtimestamp);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"program");
+  lua_pushlstring(g_L,pmsg->program.text,pmsg->program.size);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"pid");
+  lua_pushinteger(g_L,pmsg->pid);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"facility");
+  lua_pushstring(g_L,c_facility[pmsg->facility]);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"level");
+  lua_pushstring(g_L,c_level[pmsg->level]);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"msg");
+  lua_pushlstring(g_L,pmsg->msg.text,pmsg->msg.size);
+  lua_settable(g_L,-3);
   
   rc = lua_pcall(g_L,1,0,0);
   if (rc != 0)
   {
-    const char *err = lua_tostring(g_L,1);
-    syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
+    err = lua_tostring(g_L,1);
+    syslog(LOG_ERR,"Lua ERROR(%d): %s",rc,err);
   }
 }
 
-/****************************************************************/
+/**********************************************************************/
 
 void parse_options(int argc,char *argv[])
 {
