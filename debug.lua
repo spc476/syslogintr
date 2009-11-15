@@ -35,7 +35,7 @@ function log(msg)
 	version      = %d
 	_RAW         = %s
 	host         = %s
-	hostname     = %s
+	origin       = %s
 	port         = %d
 	remote       = %s
 	timestamp    = %s
@@ -50,7 +50,7 @@ function log(msg)
 	msg.version,
 	msg._RAW,
 	msg.host,
-	msg.hostname,
+	msg.origin,
 	msg.port,
 	tostring(msg.remote),
 	os.date("%c",msg.timestamp),

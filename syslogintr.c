@@ -38,7 +38,7 @@
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
-*	hostname	string  ("" if not available) [6]
+*	origin		string  ("" if not available) [6]
 *	port		integer (-1 if not available) [5]
 *
 * and then pass it to a Lua function called log().  That function can then
@@ -162,7 +162,7 @@ struct msg
   int              version;
   struct sysstring raw;
   struct sysstring host;
-  struct sysstring hostname;  
+  struct sysstring origin;
   int              port;
   bool             remote;
   time_t           timestamp;
@@ -672,7 +672,7 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   }
   
   /*--------------------------------------------
-  ; check for hostname/program name/pid fields
+  ; check for origin/program name/pid fields
   ; (technically, the PID field isn't part of
   ; RFC3164, and is technically part of the CONTENT
   ; portion of the message, but hey, a lot of
@@ -687,8 +687,8 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     b = memchr(p,' ',(size_t)(q - p));
     if (b != NULL)
     {
-      msg.hostname.text = p;
-      msg.hostname.size = (size_t)(b - p);
+      msg.origin.text = p;
+      msg.origin.size = (size_t)(b - p);
       p = b + 1;
     }
     
@@ -742,7 +742,7 @@ void process_msg(const struct msg *const pmsg)
   lua_pushlstring(g_L,pmsg->host.text,pmsg->host.size);
   lua_settable(g_L,-3);
   
-  lua_pushliteral(g_L,"hostname");
+  lua_pushliteral(g_L,"origin");
   lua_pushlstring(g_L,pmsg->hostname.text,pmsg->hostname.size);
   lua_settable(g_L,-3);
   
