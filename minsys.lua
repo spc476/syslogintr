@@ -72,7 +72,7 @@ end
 
 function user_handler()
   log{
-  	host      = "(localsocket)",
+  	host      = "(internal)",
   	program   = "minsys",
   	facility  = "syslog",
   	level     = "debug",
@@ -101,11 +101,26 @@ end
 
 function alarm_handler()
   log{
-  	host      = "(localsocket)",
+  	host      = "(internal)",
   	program	  = "minsys",
   	facility  = "syslog",
   	level     = "debug",
   	timestamp = os.time(),
   	msg       = "Alarm clock rang---hitting the snooze button"
+  }
+end
+
+-- *****************************************************************
+-- * function called when program is exiting. 
+-- *****************************************************************
+
+function cleanup()
+  log{
+  	host      = "(internal)",
+  	program   = "minsys",
+  	facility  = "syslog",
+  	level     = "debug",
+  	timestamp = os.time(),
+  	msg       = "Clean up!  We're going away!"
   }
 end
