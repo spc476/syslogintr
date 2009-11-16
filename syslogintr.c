@@ -669,7 +669,7 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   ; check for a supplied timestamp.
   ;---------------------------------------------*/
   
-  q = strptime(p,"%B %d %H:%M:%S",&dateread);
+  q = strptime(p,"%b %d %H:%M:%S",&dateread);
   
   if (q)
   {
@@ -1265,7 +1265,7 @@ int syslogintr_relay(lua_State *L)
   msg.msg.text     = lua_tolstring(L,-1,&msg.msg.size);
   
   localtime_r(&msg.logtimestamp,&stm);
-  strftime(date,BUFSIZ,"%B %d %H:%M:%S",&stm);
+  strftime(date,BUFSIZ,"%b %d %H:%M:%S",&stm);
 
   p   = output;
   max = BUFSIZ;
@@ -1297,15 +1297,17 @@ int syslogintr_relay(lua_State *L)
   }
   
   size = snprintf(p,max,": %s",msg.msg.text);
+
+syslogintr_relay_send:
+  
+  size = (size_t)((p + size) - output);
   
   if (size > 1024)
   {
     size = 1024;
     output[size] = '\0';
   }
-
-syslogintr_relay_send:
-
+  
   paddr = lua_touserdata(L,1);
   
   if (paddr->ss.sa_family == AF_INET)
@@ -1328,21 +1330,50 @@ syslogintr_relay_send:
   else if (paddr->ss.sa_family == AF_INET6)
   {
     struct sockaddr_in6 addr;
+    ssize_t             bytes;
     int                 sock;
     int                 reuse = 1;
+    int                 rc;
     
     sock = socket(AF_INET6,SOCK_DGRAM,0);
-    setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
+    if (sock == -1)
+    {
+      syslog(LOG_ERR,"socket() = %s",strerror(errno));
+      goto syslogintr_relay_exit;
+    }
+    
+    rc = setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
+    if (rc == -1)
+    {
+      syslog(LOG_ERR,"setsockopt() = %s",strerror(errno));
+      goto syslogintr_relay_exit;
+    }
     
     addr.sin6_family = AF_INET6;
     inet_pton(AF_INET6,LOG_IPv6,&addr.sin6_addr.s6_addr);
     addr.sin6_port = htons(LOG_PORT);
     
-    bind(sock,(struct sockaddr *)&addr,sizeof(addr));
-    sendto(sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6));
+    rc = bind(sock,(struct sockaddr *)&addr,sizeof(addr));
+    if (rc == -1)
+    {
+      syslog(LOG_ERR,"bind() = %s",strerror(errno));
+      goto syslogintr_relay_exit;
+    }
+    
+    bytes = sendto(sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6));
+    if (bytes != size)
+    {
+      if (bytes < 0)
+        syslog(LOG_ERR,"sendto() = %s",strerror(errno));
+      else
+        syslog(LOG_ERR,"sendto() = %lu",(unsigned long)bytes);
+      goto syslogintr_relay_exit;
+    }
+
+syslogintr_relay_exit:
     close(sock);
   }
-  
+
   lua_pop(L,11);	/* 2 input, 9 fetches */
   return 0;
 }
