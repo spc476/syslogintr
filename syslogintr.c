@@ -181,10 +181,10 @@ struct msg
 
 /******************************************************************/
 
-void		ipv4_socket		(const char *);
-void		ipv6_socket		(const char *);
-void		local_socket		(const char *);
-ListenNode	create_socket		(sockaddr_all *,socklen_t,void (*)(struct epoll_event *));
+void		ipv4_socket		(void);
+void		ipv6_socket		(void);
+void		local_socket		(void);
+int		create_socket		(struct sockaddr *,socklen_t);
 void		event_read		(struct epoll_event *);
 void		lua_interp		(sockaddr_all *,sockaddr_all *,const char *);
 void		process_msg		(const struct msg *const);
@@ -208,25 +208,31 @@ extern int   optind;
 extern int   opterr;
 extern int   optopt;
 
-int          g_queue;
-unsigned int g_alarm;
-const char  *g_slident     = LOG_IDENT;
-int          g_slfacility  = LOG_SYSLOG;
-const char  *g_luacode     = LUA_CODE;
-const char  *g_user;
-const char  *g_group;
-int          gf_debug;
-int          gf_foreground;
-lua_State   *g_L;
+int                  g_queue;
+unsigned int         g_alarm;
+const char          *g_slident     = LOG_IDENT;
+int                  g_slfacility  = LOG_SYSLOG;
+const char          *g_luacode     = LUA_CODE;
+const char          *g_user;
+const char          *g_group;
+int                  gf_debug;
+int                  gf_foreground;
+lua_State           *g_L;
+struct sockaddr_in   g_aipv4;
+struct sockaddr_in6  g_aipv6;
+struct sockaddr_un   g_alocal;
+int                  g_sipv4       = -1;
+int                  g_sipv6       = -1;
+int                  g_slocal      = -1;
 
 const struct option c_options[] =
 {
-  { "ip"	   , optional_argument , NULL		, OPT_IPv4	} ,
-  { "ip4"	   , optional_argument , NULL		, OPT_IPv4	} ,
-  { "ipv4"	   , optional_argument , NULL		, OPT_IPv4	} ,
-  { "ip6"	   , optional_argument , NULL		, OPT_IPv6	} ,
-  { "ipv6"	   , optional_argument , NULL		, OPT_IPv6	} ,
-  { "local"	   , optional_argument , NULL		, OPT_LOCAL     } ,
+  { "ip"	   , no_argument       , NULL		, OPT_IPv4	} ,
+  { "ip4"	   , no_argument       , NULL		, OPT_IPv4	} ,
+  { "ipv4"	   , no_argument       , NULL		, OPT_IPv4	} ,
+  { "ip6"	   , no_argument       , NULL		, OPT_IPv6	} ,
+  { "ipv6"	   , no_argument       , NULL		, OPT_IPv6	} ,
+  { "local"	   , no_argument       , NULL		, OPT_LOCAL     } ,
   { "debug"	   , no_argument       , &gf_debug      , true          } ,
   { "foreground"   , no_argument       , &gf_foreground , true          } ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
@@ -401,118 +407,82 @@ int main(int argc,char *argv[])
       (*node->fn)(&list[i]);
     }
   }
+  
+  lua_getglobal(g_L,"cleanup");
+  if (lua_isfunction(g_L,1))
+  {
+    int rc = lua_pcall(g_L,0,0,0);
+    if (rc != 0)
+    {
+      const char *err = lua_tostring(g_L,1);
+      syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
+    }
+  }
+  
+  lua_close(g_L);
+  close(g_queue);
+
+  if (g_slocal != -1) close(g_slocal);
+  if (g_sipv6  != -1) close(g_sipv6);
+  if (g_sipv4  != -1) close(g_sipv4);
 
   return EXIT_SUCCESS;
 }
 
 /*************************************************************/
 
-void ipv4_socket(const char *taddr)
+void ipv4_socket(void)
 {
-  ListenNode         ls;
-  sockaddr_all       addr;
-  struct epoll_event ev;
-  int                rc;
-  
-  if (taddr == NULL)
-    taddr = LOG_IPv4;
-  
-  memset(&addr,0,sizeof(addr));
-  memset(&ev,  0,sizeof(ev));
-  
-  addr.sin.sin_family = AF_INET;
-  inet_pton(AF_INET,taddr,&addr.sin.sin_addr.s_addr);
-  addr.sin.sin_port = htons(LOG_PORT);
-  ls = create_socket(&addr,sizeof(addr.sin),event_read);
-  
-  ev.events   = EPOLLIN;
-  ev.data.ptr = ls;
-  
-  rc = epoll_ctl(g_queue,EPOLL_CTL_ADD,ls->sock,&ev);
-  if (rc == -1)
-    perror("epoll_ctl(ADD ipv4)");
+  inet_pton(AF_INET,LOG_IPv4,&g_aipv4.sin_addr.s_addr);
+  g_aipv4.sin_family = AF_INET;
+  g_aipv4.sin_port   = htons(LOG_PORT);
+  g_sipv4            = create_socket((struct sockaddr *)&g_aipv4,sizeof(g_aipv4));
 }
 
 /*************************************************************/
 
-void ipv6_socket(const char *taddr)
+void ipv6_socket(void)
 {
-  ListenNode         ls;
-  sockaddr_all       addr;
-  struct epoll_event ev;
-  int                rc;
-  
-  if (taddr == NULL)
-    taddr = LOG_IPv6;
-  
-  memset(&addr,0,sizeof(addr));
-  memset(&ev,  0,sizeof(ev));
-  
-  addr.sin6.sin6_family = AF_INET6;
-  inet_pton(AF_INET6,taddr,&addr.sin6.sin6_addr.s6_addr);
-  addr.sin6.sin6_port = htons(LOG_PORT);
-  ls = create_socket(&addr,sizeof(addr.sin6),event_read);
-  
-  ev.events   = EPOLLIN;
-  ev.data.ptr = ls;
-  
-  rc = epoll_ctl(g_queue,EPOLL_CTL_ADD,ls->sock,&ev);
-  if (rc == -1)
-    perror("epoll_ctl(ADD ipv6)");
+  inet_pton(AF_INET6,LOG_IPv6,&g_aipv6.sin6_addr.s6_addr);
+  g_aipv6.sin6_family = AF_INET6;
+  g_aipv6.sin6_port   = htons(LOG_PORT);
+  g_sipv6             = create_socket((struct sockaddr *)&g_aipv6,sizeof(g_aipv6));
 }
 
 /**************************************************************/
 
-void local_socket(const char *taddr)
+void local_socket(void)
 {
-  ListenNode         ls;
-  sockaddr_all       addr;
-  struct epoll_event ev;
-  int                rc;
-  
-  if (taddr == NULL)
-    taddr = LOG_LOCAL;
-  
-  rc = unlink(taddr);
-  if (rc == -1)
+  if (unlink(LOG_LOCAL) == -1)
   {
-    perror(taddr);
+    perror(LOG_LOCAL);
     exit(EXIT_FAILURE);
   }
   
-  memset(&addr,0,sizeof(addr));
-  memset(&ev,  0,sizeof(ev));
-  
-  addr.sun.sun_family = AF_LOCAL;
-  strcpy(addr.sun.sun_path,taddr);
-  ls = create_socket(&addr,sizeof(addr.sun),event_read);
-  
-  ev.events   = EPOLLIN;
-  ev.data.ptr = ls;
-  
-  rc = epoll_ctl(g_queue,EPOLL_CTL_ADD,ls->sock,&ev);
-  if (rc == -1)
-    perror("epoll_ctl(ADD local)");
+  strcpy(g_alocal.sun_path,LOG_LOCAL);
+  g_alocal.sun_family = AF_LOCAL;
+  g_slocal            = create_socket((struct sockaddr *)&g_alocal,sizeof(g_alocal));
 }
 
 /*******************************************************************/
 
-ListenNode create_socket(sockaddr_all *paddr,socklen_t saddr,void (*fn)(struct epoll_event *))
+int create_socket(struct sockaddr *paddr,socklen_t saddr)
 {
   ListenNode          listen;
+  struct epoll_event  ev;
   int                 rc;
   int                 reuse = 1;
   
   assert(paddr != NULL);
   assert(saddr > 0);
-  assert(fn    != NULL);
   
   listen = malloc(sizeof(struct listen_node));
+  
   memset(listen,0,sizeof(struct listen_node));
   memcpy(&listen->local,paddr,saddr);
   
-  listen->fn   = fn;
-  listen->sock = socket(paddr->ss.sa_family,SOCK_DGRAM,0);
+  listen->fn   = event_read;
+  listen->sock = socket(paddr->sa_family,SOCK_DGRAM,0);
   
   rc = setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
   if (rc == -1)
@@ -535,14 +505,25 @@ ListenNode create_socket(sockaddr_all *paddr,socklen_t saddr,void (*fn)(struct e
     exit(EXIT_FAILURE);
   }
 
-  rc = bind(listen->sock,&paddr->ss,saddr);
+  rc = bind(listen->sock,paddr,saddr);
   if (rc == -1)
   {
     perror("bind()");
     exit(EXIT_FAILURE);
   }
   
-  return listen;
+  memset(&ev,0,sizeof(ev));
+  ev.events   = EPOLLIN;
+  ev.data.ptr = listen;
+  
+  rc = epoll_ctl(g_queue,EPOLL_CTL_ADD,listen->sock,&ev);
+  if (rc == -1)
+  {
+    perror("epoll_ctl(ADD)");
+    exit(EXIT_FAILURE);
+  }
+
+  return listen->sock;
 }
   
 /*****************************************************************/  
@@ -693,7 +674,7 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   ; Unix programs set it.  So it makes sense.
   ;-----------------------------------------------*/
   
-  q = strchr(p,':');	/* XXX - IPv6 contains ':'---need to rething this */
+  q = strchr(p,':');	/* XXX - IPv6 contains ':'---need to rethink this */
   if (q)
   {
     char *b;
@@ -840,13 +821,13 @@ void parse_options(int argc,char *argv[])
       case OPT_NONE: 
            break;
       case OPT_IPv4:
-           ipv4_socket(optarg);
+           ipv4_socket();
            break;
       case OPT_IPv6:
-           ipv6_socket(optarg);
+           ipv6_socket();
            break;
       case OPT_LOCAL:
-           local_socket(optarg);
+           local_socket();
            break;
       case OPT_LOG_FACILITY:
            g_slfacility = map_str_to_int(optarg,c_facility,MAX_FACILITY) << 3;
@@ -879,12 +860,12 @@ void usage(const char *progname)
   fprintf(
   	stderr,
         "usage: %s [options...] [luafile]\n"
-        "\t--ip    [ipaddr]          bind to IP address (any)\n"
-        "\t--ip4   [ipaddr]                  \"\n"
-        "\t--ipv4  [ipaddr]                  \"\n"
-        "\t--ip6   [ip6addr]         bind to IPv6 address (any)\n"
-        "\t--ipv6  [ip6addr]                  \"\n"
-        "\t--local [localsocket]     bind to local socket (/dev/log)\n"
+        "\t--ip                      accept from IPv4 hosts\n"
+        "\t--ip4                            \"\n"
+        "\t--ipv4                           \"\n"
+        "\t--ip6                     accept from IPv6 hosts\n"
+        "\t--ipv6                           \"\n"
+        "\t--local                   accept from " LOG_LOCAL "\n"
         "\t--debug                   debug info\n"
         "\t--foreground              run in foreground\n"
         "\t--user  <username>        user to run as (no default)\n"
@@ -997,49 +978,45 @@ void daemon_init(void)
 
   setsid();
   syslog(LOG_DEBUG,"gone into daemon mode");
+    
+  lua_getglobal(g_L,"io");
   
-  
-  if (g_L)
-  {
-    lua_getglobal(g_L,"io");
-  
-    lua_getfield(g_L,-1,"close");
-    lua_getfield(g_L,-2,"stdin");
-    lua_call(g_L,1,0);
+  lua_getfield(g_L,-1,"close");
+  lua_getfield(g_L,-2,"stdin");
+  lua_call(g_L,1,0);
     
-    lua_getfield(g_L,-1,"close");
-    lua_getfield(g_L,-2,"stdout");
-    lua_call(g_L,1,0);
+  lua_getfield(g_L,-1,"close");
+  lua_getfield(g_L,-2,"stdout");
+  lua_call(g_L,1,0);
     
-    lua_getfield(g_L,-1,"close");
-    lua_getfield(g_L,-2,"stderr");
-    lua_call(g_L,1,0);
+  lua_getfield(g_L,-1,"close");
+  lua_getfield(g_L,-2,"stderr");
+  lua_call(g_L,1,0);
     
-    close(STDERR_FILENO);
-    close(STDOUT_FILENO);
-    close(STDIN_FILENO);
+  close(STDERR_FILENO);
+  close(STDOUT_FILENO);
+  close(STDIN_FILENO);
     
-    lua_getfield(g_L,-1,"open");
-    lua_pushstring(g_L,"/dev/null");
-    lua_pushstring(g_L,"r");
-    lua_call(g_L,2,1);
-    lua_setfield(g_L,-2,"stdin");
+  lua_getfield(g_L,-1,"open");
+  lua_pushstring(g_L,"/dev/null");
+  lua_pushstring(g_L,"r");
+  lua_call(g_L,2,1);
+  lua_setfield(g_L,-2,"stdin");
     
-    lua_getfield(g_L,-1,"open");
-    lua_pushstring(g_L,"/dev/null");
-    lua_pushstring(g_L,"w");
-    lua_call(g_L,2,1);
-    lua_setfield(g_L,-2,"stdout");
+  lua_getfield(g_L,-1,"open");
+  lua_pushstring(g_L,"/dev/null");
+  lua_pushstring(g_L,"w");
+  lua_call(g_L,2,1);
+  lua_setfield(g_L,-2,"stdout");
     
-    lua_getfield(g_L,-1,"open");
-    lua_pushstring(g_L,"/dev/null");
-    lua_pushstring(g_L,"w");
-    lua_call(g_L,2,1);
-    lua_setfield(g_L,-2,"stderr");
+  lua_getfield(g_L,-1,"open");
+  lua_pushstring(g_L,"/dev/null");
+  lua_pushstring(g_L,"w");
+  lua_call(g_L,2,1);
+  lua_setfield(g_L,-2,"stderr");
     
-    lua_pop(g_L,lua_gettop(g_L));
-    syslog(LOG_DEBUG,"reopened io.stdin, io.stdout and io.stderr");
-  }
+  lua_pop(g_L,lua_gettop(g_L));
+  syslog(LOG_DEBUG,"reopened io.stdin, io.stdout and io.stderr");
 }
 
 /***********************************************************************/
@@ -1140,8 +1117,7 @@ int syslogintr_ud__toprint(lua_State *L)
   
   assert(L != NULL);
   
-  luaL_checkudata(L,1,LUA_UD_HOST);
-  paddr = lua_touserdata(L,1);
+  paddr = luaL_checkudata(L,1,LUA_UD_HOST);
   lua_pop(L,1);
   
   switch(paddr->ss.sa_family)
@@ -1169,7 +1145,6 @@ int syslogintr_ud__toprint(lua_State *L)
 
 int syslogintr_host(lua_State *L)
 {
-  int              pcount;
   const char      *hostname;
   struct addrinfo  hints;
   struct addrinfo *results;
@@ -1179,19 +1154,8 @@ int syslogintr_host(lua_State *L)
   
   assert(L != NULL);
   
-  pcount = lua_gettop(L);
-  if (pcount == 0)
-    return luaL_error(L,"not enough arguments");
-  else if (pcount > 1)
-    return luaL_error(L,"too many arguments");
-  
-  if (lua_isstring(L,1))
-  {
-    hostname = lua_tostring(L,1);
-    lua_pop(L,1);
-  }
-  else
-    return luaL_error(L,"wrong argument type to host()");
+  hostname = luaL_checkstring(L,1);
+  lua_pop(L,1);
   
   memset(&hints,0,sizeof(hints));
   hints.ai_flags    = AI_NUMERICSERV;
@@ -1241,7 +1205,7 @@ int syslogintr_relay(lua_State *L)
   
   assert(L != NULL);
   
-  luaL_checkudata(L,1,LUA_UD_HOST);
+  paddr = luaL_checkudata(L,1,LUA_UD_HOST);
   luaL_checktype(L,2,LUA_TTABLE);
   
   lua_getfield(L,2,"version");
@@ -1271,16 +1235,13 @@ int syslogintr_relay(lua_State *L)
   max = BUFSIZ;
   
   size = snprintf(p,max,"<%d>%s ",msg.facility * 8 + msg.level,date);
-  if (size > max) { goto syslogintr_relay_send; }
   max -= size;
   p   += size;
   
   if (msg.remote)
   {
-    assert(msg.host.size > 0);
-    
+    assert(msg.host.size > 0);    
     size = snprintf(p,max,"%s ",msg.host.text);
-    if (size > max) { goto syslogintr_relay_send; }
     max -= size;
     p   += size;
   }
@@ -1291,89 +1252,41 @@ int syslogintr_relay(lua_State *L)
       size = snprintf(p,max,"%s[%d]",msg.program.text,msg.pid);
     else
       size = snprintf(p,max,"%s",msg.program.text);
-    if (size > max) { goto syslogintr_relay_send; }
     max -= size;
     p   += size;
   }
   
   size = snprintf(p,max,": %s",msg.msg.text);
-
-syslogintr_relay_send:
-  
   size = (size_t)((p + size) - output);
-  
+
   if (size > 1024)
   {
     size = 1024;
     output[size] = '\0';
   }
   
-  paddr = lua_touserdata(L,1);
+  if ((paddr->ss.sa_family == AF_INET) && (g_sipv4 > -1))
+  {
+    assert(g_aipv4.sin_family == AF_INET);
+    if (sendto(g_sipv4,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
+      syslog(LOG_ERR,"sendto(ipv4) = %s",strerror(errno));
+  }
+  else if ((paddr->ss.sa_family == AF_INET6) && (g_sipv6 > -1))
+  {
+    assert(g_aipv6.sin6_family == AF_INET6);
+    if (sendto(g_sipv6,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
+      syslog(LOG_ERR,"sendto(ipv6) = %s",strerror(errno));
+  }
+  else
+    syslog(LOG_ERR,"can't relay---improper socket type");
+
+  /*----------------------------------------------------------------
+  ; pop after we've used the data from Lua.  Since Lua does
+  ; garbage collection, if we pop the parameters before we
+  ; use any string data, it may be collected and bad things
+  ; would result.
+  ;--------------------------------------------------------------*/
   
-  if (paddr->ss.sa_family == AF_INET)
-  {
-    struct sockaddr_in addr;
-    int                sock;
-    int                reuse = 1;
-    
-    sock = socket(AF_INET,SOCK_DGRAM,0);
-    setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
-
-    addr.sin_family = AF_INET;
-    inet_pton(AF_INET,LOG_IPv4,&addr.sin_addr.s_addr);
-    addr.sin_port = htons(LOG_PORT);
-    
-    bind(sock,(struct sockaddr *)&addr,sizeof(addr));
-    sendto(sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in));
-    close(sock);
-  }
-  else if (paddr->ss.sa_family == AF_INET6)
-  {
-    struct sockaddr_in6 addr;
-    ssize_t             bytes;
-    int                 sock;
-    int                 reuse = 1;
-    int                 rc;
-    
-    sock = socket(AF_INET6,SOCK_DGRAM,0);
-    if (sock == -1)
-    {
-      syslog(LOG_ERR,"socket() = %s",strerror(errno));
-      goto syslogintr_relay_exit;
-    }
-    
-    rc = setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
-    if (rc == -1)
-    {
-      syslog(LOG_ERR,"setsockopt() = %s",strerror(errno));
-      goto syslogintr_relay_exit;
-    }
-    
-    addr.sin6_family = AF_INET6;
-    inet_pton(AF_INET6,LOG_IPv6,&addr.sin6_addr.s6_addr);
-    addr.sin6_port = htons(LOG_PORT);
-    
-    rc = bind(sock,(struct sockaddr *)&addr,sizeof(addr));
-    if (rc == -1)
-    {
-      syslog(LOG_ERR,"bind() = %s",strerror(errno));
-      goto syslogintr_relay_exit;
-    }
-    
-    bytes = sendto(sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6));
-    if (bytes != size)
-    {
-      if (bytes < 0)
-        syslog(LOG_ERR,"sendto() = %s",strerror(errno));
-      else
-        syslog(LOG_ERR,"sendto() = %lu",(unsigned long)bytes);
-      goto syslogintr_relay_exit;
-    }
-
-syslogintr_relay_exit:
-    close(sock);
-  }
-
   lua_pop(L,11);	/* 2 input, 9 fetches */
   return 0;
 }
