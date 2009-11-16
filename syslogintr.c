@@ -87,10 +87,12 @@
 #include <ctype.h>
 #include <assert.h>
 #include <time.h>
+#include <string.h>
 #include <errno.h>
 #include <stdbool.h>
 
 #include <netinet/in.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -121,6 +123,7 @@
 #define LOG_IDENT	"syslogl"
 
 #define LUA_CODE	"minsys.lua"
+#define LUA_UD_HOST	"SOCKADDR"
 
 /*****************************************************************/
 
@@ -194,6 +197,9 @@ int		map_str_to_int		(const char *,const char *const [],size_t);
 void		handle_signal		(int);
 void		set_signal_handler	(int,void (*)(int));
 int		syslogintr_alarm	(lua_State *);
+int		syslogintr_ud__toprint	(lua_State *);
+int		syslogintr_host		(lua_State *);
+int		syslogintr_relay	(lua_State *);
 
 /******************************************************************/
 
@@ -313,8 +319,17 @@ int main(int argc,char *argv[])
   
   lua_gc(g_L,LUA_GCSTOP,0);
   luaL_openlibs(g_L);
-  lua_register(g_L,"alarm",syslogintr_alarm);
   lua_gc(g_L,LUA_GCRESTART,0);
+
+  lua_register(g_L,"alarm",syslogintr_alarm);
+  lua_register(g_L,"host", syslogintr_host);
+  lua_register(g_L,"relay",syslogintr_relay);
+  
+  luaL_newmetatable(g_L,LUA_UD_HOST);
+  lua_pushliteral(g_L,"__tostring");
+  lua_pushcfunction(g_L,syslogintr_ud__toprint);
+  lua_settable(g_L,-3);
+  lua_pop(g_L,1);
   
   if (optind < argc)
     g_luacode = argv[optind];
@@ -1065,6 +1080,8 @@ void set_signal_handler(int sig,void (*handler)(int))
   struct sigaction oact;
   int              rc;
   
+  assert(handler != NULL);
+  
   sigemptyset(&act.sa_mask);
   act.sa_handler = handler;
   act.sa_flags   = 0;
@@ -1081,6 +1098,8 @@ void set_signal_handler(int sig,void (*handler)(int))
 int syslogintr_alarm(lua_State *L)
 {
   int pcount;
+  
+  assert(L != NULL);
   
   pcount = lua_gettop(L);
   if (pcount == 0)
@@ -1112,3 +1131,220 @@ int syslogintr_alarm(lua_State *L)
 }
 
 /***********************************************************************/
+
+int syslogintr_ud__toprint(lua_State *L)
+{
+  sockaddr_all *paddr;
+  char          taddr[BUFSIZ];
+  const char   *r;
+  
+  assert(L != NULL);
+  
+  luaL_checkudata(L,1,LUA_UD_HOST);
+  paddr = lua_touserdata(L,1);
+  lua_pop(L,1);
+  
+  switch(paddr->ss.sa_family)
+  {
+    case AF_INET:  
+         r = inet_ntop(AF_INET, &paddr->sin.sin_addr.s_addr,taddr,BUFSIZ);
+         break;
+    case AF_INET6: 
+         r = inet_ntop(AF_INET6,&paddr->sin6.sin6_addr.s6_addr,taddr,BUFSIZ);
+         break;
+    default: 
+         lua_pushnil(L);
+         return 1;
+  }
+  
+  if (r == NULL)
+    lua_pushliteral(L,"");
+  else
+    lua_pushstring(L,taddr);
+
+  return 1;
+}
+
+/*********************************************************************/
+
+int syslogintr_host(lua_State *L)
+{
+  int              pcount;
+  const char      *hostname;
+  struct addrinfo  hints;
+  struct addrinfo *results;
+  sockaddr_all    *paddr;
+  size_t           size;
+  int              rc;
+  
+  assert(L != NULL);
+  
+  pcount = lua_gettop(L);
+  if (pcount == 0)
+    return luaL_error(L,"not enough arguments");
+  else if (pcount > 1)
+    return luaL_error(L,"too many arguments");
+  
+  if (lua_isstring(L,1))
+  {
+    hostname = lua_tostring(L,1);
+    lua_pop(L,1);
+  }
+  else
+    return luaL_error(L,"wrong argument type to host()");
+  
+  memset(&hints,0,sizeof(hints));
+  hints.ai_flags    = AI_NUMERICSERV;
+  hints.ai_family   = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  
+  rc = getaddrinfo(hostname,"514",&hints,&results);
+  if (rc != 0)
+  {
+    syslog(LOG_WARNING,"getaddrinfo(%s) = %s",hostname,strerror(errno));
+    lua_pushnil(L);
+    return 1;
+  }
+  
+  switch(results[0].ai_addr->sa_family)
+  {
+    case AF_INET:  size = sizeof(struct sockaddr_in);  break;
+    case AF_INET6: size = sizeof(struct sockaddr_in6); break;
+    default: 
+         syslog(LOG_WARNING,"unexpected family for address");
+         freeaddrinfo(results);
+         lua_pushnil(L);
+         return 1;
+  }
+    
+  paddr = lua_newuserdata(L,size);
+  luaL_getmetatable(L,LUA_UD_HOST);
+  lua_setmetatable(L,-2);
+  memcpy(paddr,results[0].ai_addr,size);
+  freeaddrinfo(results);
+  return 1;
+}
+
+/************************************************************************/
+
+int syslogintr_relay(lua_State *L)
+{
+  sockaddr_all *paddr;
+  struct msg    msg;
+  struct tm     stm;
+  char          date  [BUFSIZ];
+  char          output[BUFSIZ];
+  char         *p;
+  size_t        max;
+  size_t        size;
+  size_t        dummy;
+  
+  assert(L != NULL);
+  
+  luaL_checkudata(L,1,LUA_UD_HOST);
+  luaL_checktype(L,2,LUA_TTABLE);
+  
+  lua_getfield(L,2,"version");
+  lua_getfield(L,2,"remote");
+  lua_getfield(L,2,"host");
+  lua_getfield(L,2,"logtimestamp");
+  lua_getfield(L,2,"program");
+  lua_getfield(L,2,"pid");
+  lua_getfield(L,2,"facility");
+  lua_getfield(L,2,"level");
+  lua_getfield(L,2,"msg");
+  
+  msg.version      = lua_tointeger(L,-9);
+  msg.remote       = lua_toboolean(L,-8);
+  msg.host.text    = lua_tolstring(L,-7,&msg.host.size);
+  msg.logtimestamp = lua_tointeger(L,-6);
+  msg.program.text = lua_tolstring(L,-5,&msg.program.size);
+  msg.pid          = lua_tointeger(L,-4);
+  msg.facility     = map_str_to_int(lua_tolstring(L,-3,&dummy),c_facility,MAX_FACILITY);
+  msg.level        = map_str_to_int(lua_tolstring(L,-2,&dummy),c_level,   MAX_LEVEL);
+  msg.msg.text     = lua_tolstring(L,-1,&msg.msg.size);
+  
+  localtime_r(&msg.logtimestamp,&stm);
+  strftime(date,BUFSIZ,"%B %d %H:%M:%S",&stm);
+
+  p   = output;
+  max = BUFSIZ;
+  
+  size = snprintf(p,max,"<%d>%s ",msg.facility * 8 + msg.level,date);
+  if (size > max) { goto syslogintr_relay_send; }
+  max -= size;
+  p   += size;
+  
+  if (msg.remote)
+  {
+    assert(msg.host.size > 0);
+    
+    size = snprintf(p,max,"%s ",msg.host.text);
+    if (size > max) { goto syslogintr_relay_send; }
+    max -= size;
+    p   += size;
+  }
+  
+  if (msg.program.size)
+  {
+    if (msg.pid)
+      size = snprintf(p,max,"%s[%d]",msg.program.text,msg.pid);
+    else
+      size = snprintf(p,max,"%s",msg.program.text);
+    if (size > max) { goto syslogintr_relay_send; }
+    max -= size;
+    p   += size;
+  }
+  
+  size = snprintf(p,max,": %s",msg.msg.text);
+  
+  if (size > 1024)
+  {
+    size = 1024;
+    output[size] = '\0';
+  }
+
+syslogintr_relay_send:
+
+  paddr = lua_touserdata(L,1);
+  
+  if (paddr->ss.sa_family == AF_INET)
+  {
+    struct sockaddr_in addr;
+    int                sock;
+    int                reuse = 1;
+    
+    sock = socket(AF_INET,SOCK_DGRAM,0);
+    setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
+
+    addr.sin_family = AF_INET;
+    inet_pton(AF_INET,LOG_IPv4,&addr.sin_addr.s_addr);
+    addr.sin_port = htons(LOG_PORT);
+    
+    bind(sock,(struct sockaddr *)&addr,sizeof(addr));
+    sendto(sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in));
+    close(sock);
+  }
+  else if (paddr->ss.sa_family == AF_INET6)
+  {
+    struct sockaddr_in6 addr;
+    int                 sock;
+    int                 reuse = 1;
+    
+    sock = socket(AF_INET6,SOCK_DGRAM,0);
+    setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
+    
+    addr.sin6_family = AF_INET6;
+    inet_pton(AF_INET6,LOG_IPv6,&addr.sin6_addr.s6_addr);
+    addr.sin6_port = htons(LOG_PORT);
+    
+    bind(sock,(struct sockaddr *)&addr,sizeof(addr));
+    sendto(sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6));
+    close(sock);
+  }
+  
+  lua_pop(L,11);	/* 2 input, 9 fetches */
+  return 0;
+}
+
+/************************************************************************/
