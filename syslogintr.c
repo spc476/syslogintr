@@ -82,14 +82,15 @@
 
 #define _GNU_SOURCE
 
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <assert.h>
-#include <time.h>
 #include <string.h>
-#include <errno.h>
-#include <stdbool.h>
+#include <time.h>
 
 #include <netinet/in.h>
 #include <netdb.h>
@@ -672,9 +673,41 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   ; RFC3164, and is technically part of the CONTENT
   ; portion of the message, but hey, a lot of
   ; Unix programs set it.  So it makes sense.
+  ;
+  ; since IPv6 addresses can contain embedded ':',
+  ; check for a valid IPv6 address first.  If it is,
+  ; then set the host to that, and the relay to the
+  ; address we got the packet from, and advance the
+  ; text pointer.  If not, then no harm done here.
   ;-----------------------------------------------*/
   
-  q = strchr(p,':');	/* XXX - IPv6 contains ':'---need to rethink this */
+  q = strchr(p,' ');
+  if (q)
+  {
+    size_t        len = (size_t)(q - p);
+    char          addr [BUFSIZ];
+    unsigned char addr6[(128 / CHAR_BIT) + 1];
+    int           rc;
+    
+    memcpy(addr,p,len);
+    addr[len] = '\0';
+    
+    rc = inet_pton(AF_INET6,addr,&addr6);
+    if (rc == 1)	/* valid IPv6 address */
+    {
+      msg.relay     = msg.host;
+      msg.host.text = p;
+      msg.host.size = (size_t)(q - p);
+      p = q + 1;
+    }
+  }
+
+  /*------------------------------------------------
+  ; this bit will catch IPv4 addresses/hostnames and
+  ; the program/pid part.
+  ;------------------------------------------------*/
+  
+  q = strchr(p,':');
   if (q)
   {
     char *b;
