@@ -693,7 +693,7 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   ; Unix programs set it.  So it makes sense.
   ;-----------------------------------------------*/
   
-  q = strchr(p,':');
+  q = strchr(p,':');	/* XXX - IPv6 contains ':'---need to rething this */
   if (q)
   {
     char *b;
