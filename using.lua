@@ -26,7 +26,11 @@ if blocked == nil then
 end
 
 if logfile == nil then
-  logfile = io.open("/tmp/log","a") or io.stdout;
+  logfile = io.open("/tmp/log","a") or io.stdout
+end
+
+if gld == nil then
+  gld = io.open("/tmp/gld.log","a") or io.stdout
 end
 
 alarm("60m")
@@ -36,11 +40,15 @@ alarm("60m")
 function user_signal()
   if logfile ~= io.stdout then
     logfile:close()
-    logfile = io.open("/tmp/log","a") or io.stdout;
+    logfile = io.open("/tmp/log","a") or io.stdout
   end
-  
-  I_log("debug","signal received loud and clear and reset logfile")
 
+  if gld ~= io.stdout then
+    gld:close()
+    gld = io.open("/tmp/gld.log","a") or io.stdout
+  end
+
+  I_log("debug","signal received loud and clear and reset logfile")
 end
 
 -- *******************************************************
@@ -50,7 +58,7 @@ function alarm_handler()
     I_log("debug","Alarm clock---snooze button!")
     return
   end
-  
+
   local now = os.time()
 
   I_log("debug","About to remove blocks")  
@@ -72,6 +80,10 @@ function log(msg)
     writelog(msg)
     sshd(msg)
   end
+
+  if msg.facility == "local5" or msg.facility == "local6" then
+    log_to_file(gld,msg)
+  end
 end
 
 -- ********************************************************
@@ -82,12 +94,19 @@ function cleanup()
   end
   blocked = {}
   logfile:close()
+  gld:close()
 end
 
 -- *******************************************************
 
 function writelog(msg)
-  logfile:write(string.format(
+  log_to_file(logfile,msg)
+end
+
+-- ******************************************************
+
+function log_to_file(file,msg)
+  file:write(string.format(
   		"%15.15s | %-25.25s | %-8s %6s | %s | %s\n",
   		msg.host,
   		msg.program,
@@ -96,7 +115,7 @@ function writelog(msg)
   		os.date("%c",msg.timestamp),
   		msg.msg
   	))
-  logfile:flush()
+  file:flush()
 end
 
 -- ********************************************************
@@ -109,7 +128,7 @@ function sshd(msg)
 
   local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+) .*");
   if ip == nil then return end
-  
+
   I_log("debug","Found IP:" .. ip)
 
   if blocked[ip] == nil then
@@ -117,7 +136,7 @@ function sshd(msg)
   else
     blocked[ip] = blocked[ip] + 1
   end
-  
+
   if blocked[ip] == 5 then
     local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
     I_log("debug","Command to block: " .. cmd)    
