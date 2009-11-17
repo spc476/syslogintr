@@ -75,7 +75,17 @@ function log(msg)
 end
 
 -- ********************************************************
-  
+
+function cleanup()
+  for i = 1 , #blocked do
+    os.execute("iptables --table filter -D INPUT 1")
+  end
+  blocked = {}
+  logfile:close()
+end
+
+-- *******************************************************
+
 function writelog(msg)
   logfile:write(string.format(
   		"%15.15s | %-25.25s | %-8s %6s | %s | %s\n",
