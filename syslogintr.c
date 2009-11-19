@@ -456,7 +456,7 @@ void local_socket(void)
 {
   mode_t orig;
   
-  orig = umask(0);
+  orig = umask(0111);
   unlink(LOG_LOCAL);
   strcpy(g_alocal.sun_path,LOG_LOCAL);
   g_alocal.sun_family = AF_LOCAL;
