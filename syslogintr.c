@@ -454,15 +454,14 @@ void ipv6_socket(void)
 
 void local_socket(void)
 {
-  if (unlink(LOG_LOCAL) == -1)
-  {
-    perror(LOG_LOCAL);
-    exit(EXIT_FAILURE);
-  }
+  mode_t orig;
   
+  orig = umask(0);
+  unlink(LOG_LOCAL);
   strcpy(g_alocal.sun_path,LOG_LOCAL);
   g_alocal.sun_family = AF_LOCAL;
   g_slocal            = create_socket((struct sockaddr *)&g_alocal,sizeof(g_alocal));
+  umask(orig);
 }
 
 /*******************************************************************/
