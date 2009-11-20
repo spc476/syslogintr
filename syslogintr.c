@@ -126,6 +126,8 @@
 #define LUA_CODE	"minsys.lua"
 #define LUA_UD_HOST	"SOCKADDR"
 
+#define PID_FILE	"/var/run/syslogl.pid"
+
 /*****************************************************************/
 
 enum
@@ -429,7 +431,8 @@ int main(int argc,char *argv[])
   if (g_slocal != -1) close(g_slocal);
   if (g_sipv6  != -1) close(g_sipv6);
   if (g_sipv4  != -1) close(g_sipv4);
-
+  
+  unlink(PID_FILE);	/* don't care if this succeeds or not */
   return EXIT_SUCCESS;
 }
 
@@ -1009,11 +1012,19 @@ void daemon_init(void)
     exit(EXIT_FAILURE);
   }
   else if (pid != 0)	/* parent goes bye bye */
+  {
+    FILE *fp = fopen(PID_FILE,"w");
+    if (fp != NULL)
+    {
+      fprintf(fp,"%lu\n",(unsigned long)pid);
+      fclose(fp);
+    }
     exit(EXIT_SUCCESS);
-
+  }
+  
   setsid();
   syslog(LOG_DEBUG,"gone into daemon mode");
-    
+  
   lua_getglobal(g_L,"io");
   
   lua_getfield(g_L,-1,"close");
