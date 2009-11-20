@@ -375,7 +375,10 @@ int main(int argc,char *argv[])
         }
       }
       else
+      {
+        syslog(LOG_DEBUG,"user_signal not a function");
         lua_pop(g_L,1);
+      }
     }
     
     if (mf_sigalarm)
