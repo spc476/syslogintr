@@ -60,6 +60,10 @@
 * or "<number>d" (for number of days).  The functino alarm_handler()
 * takes no parameters, nor returns any paramters.
 *
+* To compile:
+*
+* 	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -ldl -lm -llua
+*
 * [1]	if the incoming syslog request has a timestamp, this will contain
 *	it, otherwise, it's equal to the timestamp field.
 *
@@ -297,6 +301,8 @@ volatile sig_atomic_t mf_sigalarm;
 
 int main(int argc,char *argv[])
 {
+  FILE *fppid;
+  
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
   set_signal_handler(SIGUSR2,handle_signal);
@@ -311,6 +317,17 @@ int main(int argc,char *argv[])
   
   parse_options(argc,argv);
   openlog(g_slident,0,g_slfacility);
+
+  /*--------------------------------------------------------
+  ; it's unfortunate, but this is spread out quite a bit 
+  ; throughout the code.  First, we open the PID file, but
+  ; since we may fork(), we don't write to it yet.  Then, in
+  ; drop_privs(), we change the ownership of the file to 
+  ; the user we drop privs to.  Then, after we've possibly
+  ; called fork(), *then* we write the pid.
+  ;---------------------------------------------------------*/
+  
+  fppid = fopen(PID_FILE,"w");
   drop_privs();
   
   if (gf_debug)
@@ -348,6 +365,12 @@ int main(int argc,char *argv[])
   if (!gf_foreground)
     daemon_init();
 
+  if (fppid != NULL)
+  {
+    fprintf(fppid,"%lu\n",(unsigned long)getpid());
+    fclose(fppid);
+  }
+  
   while(true)
   {
     struct epoll_event list[MAX_EVENTS];
@@ -956,6 +979,15 @@ void drop_privs(void)
   }
   else
     ginfo.gr_gid = uinfo.pw_gid;
+  
+  /*-------------------------------------------------
+  ; it's here we change the ownership of the PID file.
+  ; I don't care about the return value, as it may not
+  ; even exist (because we might not have had perms to
+  ; create it in the first place.
+  ;--------------------------------------------------*/
+  
+  chown(PID_FILE,uinfo.pw_uid,ginfo.gr_gid);	/* don't care about results */
 
   rc = setgid(ginfo.gr_gid);
   if (rc  == -1)
@@ -1012,15 +1044,7 @@ void daemon_init(void)
     exit(EXIT_FAILURE);
   }
   else if (pid != 0)	/* parent goes bye bye */
-  {
-    FILE *fp = fopen(PID_FILE,"w");
-    if (fp != NULL)
-    {
-      fprintf(fp,"%lu\n",(unsigned long)pid);
-      fclose(fp);
-    }
     exit(EXIT_SUCCESS);
-  }
   
   setsid();
   syslog(LOG_DEBUG,"gone into daemon mode");
