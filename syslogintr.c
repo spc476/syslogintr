@@ -378,6 +378,8 @@ int main(int argc,char *argv[])
     int                events;
     int                i;
     
+    assert(lua_gettop(g_L) == 0);
+    
     if (mf_sigint) break;
 
     if (mf_sigusr1)
@@ -390,7 +392,7 @@ int main(int argc,char *argv[])
     {
       mf_sigusr2 = 0;
       lua_getglobal(g_L,"user_signal");
-      if (lua_isfunction(g_L,1))
+      if (lua_isfunction(g_L,-1))
       {
         int rc = lua_pcall(g_L,0,0,0);        
         if (rc != 0)
@@ -401,7 +403,7 @@ int main(int argc,char *argv[])
       }
       else
       {
-        syslog(LOG_DEBUG,"user_signal not a function");
+        syslog(LOG_DEBUG,"user_signal is type '%s' not type 'function'",lua_typename(g_L,lua_type(g_L,1)));
         lua_pop(g_L,1);
       }
     }
@@ -422,8 +424,8 @@ int main(int argc,char *argv[])
       }
       else
       {
+        syslog(LOG_DEBUG,"alarm_handler is type '%s' not type 'function'",lua_typename(g_L,lua_type(g_L,1)));
         lua_pop(g_L,1);
-        syslog(LOG_ERR,"Alarm set, but no action when trigger!");
       }
     }
 
