@@ -697,71 +697,91 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     p = q + 1;
   }
   
-  /*--------------------------------------------
-  ; check for origin/program name/pid fields
-  ; (technically, the PID field isn't part of
-  ; RFC3164, and is technically part of the CONTENT
-  ; portion of the message, but hey, a lot of
-  ; Unix programs set it.  So it makes sense.
-  ;
-  ; since IPv6 addresses can contain embedded ':',
-  ; check for a valid IPv6 address first.  If it is,
-  ; then set the host to that, and the relay to the
-  ; address we got the packet from, and advance the
-  ; text pointer.  If not, then no harm done here.
-  ;-----------------------------------------------*/
+  /*----------------------------------------------------------------------
+  ; check for origin/program name/pid fields (technically, the PID field
+  ; isn't part of RFC3164, and is technically part of the CONTENT portion of
+  ; the message, but hey, a lot of Unix programs set it.  So it makes sense.
+  ;------------------------------------------------------------------------*/
   
-  q = strchr(p,' ');
-  if (q)
+  if (*p == '/')
   {
-    size_t        len = (size_t)(q - p);
-    char          addr [BUFSIZ];
-    unsigned char addr6[(128 / CHAR_BIT) + 1];
-    int           rc;
+    /*-----------------------------------------------------------------
+    ; Complication 1:  Mac OS-X sends out program names embedded with
+    ; spaces, but since this form typically starts with a '/', we can look
+    ; for it and handle it accordingly.
+    ;------------------------------------------------------------------*/
     
-    memcpy(addr,p,len);
-    addr[len] = '\0';
-    
-    rc = inet_pton(AF_INET6,addr,&addr6);
-    if (rc == 1)	/* valid IPv6 address */
+    q = strchr(p,':');
+    if (q)
     {
-      msg.relay     = msg.host;
-      msg.host.text = p;
-      msg.host.size = (size_t)(q - p);
-      p = q + 1;
+      msg.program.text = p;
+      msg.program.size = (size_t)(q - p);
+      
+      for (p = q + 1 ; *p && isspace(*p) ; p++)
+        ;
     }
   }
-
-  /*------------------------------------------------
-  ; this bit will catch IPv4 addresses/hostnames and
-  ; the program/pid part.
-  ;------------------------------------------------*/
-  
-  q = strchr(p,':');
-  if (q)
+  else
   {
-    char *b;
+    /*---------------------------------------------------------------------
+    ; Complication 2: since IPv6 addresses can contain embedded ':', check
+    ; for a valid IPv6 address first.  If it is, then set the host to that,
+    ; and the relay to the address we got the packet from, and advance the
+    ; text pointer.  If not, then no harm done here.
+    ;---------------------------------------------------------------------*/
     
-    b = memchr(p,' ',(size_t)(q - p));
-    if (b != NULL)
+    q = strchr(p,' ');
+    if (q)
     {
-      msg.relay     = msg.host;
-      msg.host.text = p;
-      msg.host.size = (size_t)(b - p);
-      p = b + 1;
+      size_t        len = (size_t)(q - p);
+      char          addr [BUFSIZ];
+      unsigned char addr6[(128 / CHAR_BIT) + 1];
+      int           rc;
+    
+      memcpy(addr,p,len);
+      addr[len] = '\0';
+    
+      rc = inet_pton(AF_INET6,addr,&addr6);
+      if (rc == 1)	/* valid IPv6 address */
+      {
+        msg.relay     = msg.host;
+        msg.host.text = p;
+        msg.host.size = (size_t)(q - p);
+        p = q + 1;
+      }
     }
+
+    /*------------------------------------------------
+    ; this bit will catch IPv4 addresses/hostnames and
+    ; the program/pid part.
+    ;------------------------------------------------*/
+  
+    q = strchr(p,':');
+    if (q)
+    {
+      char *b;
     
-    b = memchr(p,'[',(size_t)(q - p));
-    if (b)
-      msg.pid = strtoul(b + 1,NULL,10);
-    else
-      b = q;
+      b = memchr(p,' ',(size_t)(q - p));
+      if (b != NULL)
+      {
+        msg.relay     = msg.host;
+        msg.host.text = p;
+        msg.host.size = (size_t)(b - p);
+        p = b + 1;
+      }
+    
+      b = memchr(p,'[',(size_t)(q - p));
+      if (b)
+        msg.pid = strtoul(b + 1,NULL,10);
+      else
+        b = q;
       
-    msg.program.text = p;
-    msg.program.size = (size_t)(b - p);
+      msg.program.text = p;
+      msg.program.size = (size_t)(b - p);
     
-    for (p = q + 1 ; *p && isspace(*p) ; p++)
-      ;      
+      for (p = q + 1 ; *p && isspace(*p) ; p++)
+        ;      
+    }
   }
   
   /*---------------------------------------------------
