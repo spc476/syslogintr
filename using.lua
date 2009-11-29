@@ -20,6 +20,8 @@
 --
 -- ********************************************************************
 
+require "env"
+
 if blocked == nil then
   blocked = {}
   os.execute("iptables --table filter -F INPUT")
@@ -27,10 +29,6 @@ end
 
 if logfile == nil then
   logfile = io.open("/tmp/log","a") or io.stdout
-end
-
-if gld == nil then
-  gld = io.open("/tmp/gld.log","a") or io.stdout
 end
 
 alarm("60m")
@@ -42,12 +40,6 @@ function user_signal()
     logfile:close()
     logfile = io.open("/tmp/log","a") or io.stdout
   end
-
-  if gld ~= io.stdout then
-    gld:close()
-    gld = io.open("/tmp/gld.log","a") or io.stdout
-  end
-
   I_log("debug","signal received loud and clear and reset logfile")
 end
 
@@ -76,14 +68,8 @@ end
 -- ******************************************************
 
 function log(msg)  
-  if msg.remote == false or msg.level ~= "debug" then
-    writelog(msg)
-    sshd(msg)
-  end
-
-  if msg.facility == "local5" or msg.facility == "local6" then
-    log_to_file(gld,msg)
-  end
+  writelog(msg)
+  sshd(msg)
 end
 
 -- ********************************************************
@@ -94,7 +80,6 @@ function cleanup()
   end
   blocked = {}
   logfile:close()
-  gld:close()
 end
 
 -- *******************************************************
@@ -107,12 +92,12 @@ end
 
 function log_to_file(file,msg)
   file:write(string.format(
-  		"%15.15s | %-25.25s | %-8s %6s | %s | %s\n",
+  		"%15.15s | %-15.15s | %-8s %6s | %s | %s\n",
   		msg.host,
   		msg.program,
   		msg.facility,
   		msg.level,
-  		os.date("%c",msg.timestamp),
+  		os.date("%b %d %H:%M:%S",msg.timestamp),
   		msg.msg
   	))
   file:flush()
@@ -163,3 +148,4 @@ end
 -- ******************************************************
 
 I_log("debug","reloaded script")
+I_log("debug",string.format("env is %s",env.HOME))
