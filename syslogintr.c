@@ -714,8 +714,23 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     q = strchr(p,':');
     if (q)
     {
+      char *b;
+      
+      /*---------------------------------------------------------------
+      ; Complication 3:  Some Linux distributions embed leading '/' with the
+      ; program name *and* include the PID, we we might as well handle that
+      ; here.  Yes, it duplicates code from below, but that will have to
+      ; wait until I get a moment to refactor this code.
+      ;-----------------------------------------------------------------*/
+      
+      b = memchr(p,'[',(size_t)(q - p));
+      if (b)
+        msg.pid = strtoul(b + 1,NULL,10);
+      else
+        b = q;
+      
       msg.program.text = p;
-      msg.program.size = (size_t)(q - p);
+      msg.program.size = (size_t)(b - p);
       
       for (p = q + 1 ; *p && isspace(*p) ; p++)
         ;
