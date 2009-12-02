@@ -207,6 +207,7 @@ int		syslogintr_alarm	(lua_State *);
 int		syslogintr_ud__toprint	(lua_State *);
 int		syslogintr_host		(lua_State *);
 int		syslogintr_relay	(lua_State *);
+void		call_optional_luaf	(const char *);
 
 /******************************************************************/
 
@@ -391,42 +392,13 @@ int main(int argc,char *argv[])
     if (mf_sigusr2)
     {
       mf_sigusr2 = 0;
-      lua_getglobal(g_L,"user_signal");
-      if (lua_isfunction(g_L,-1))
-      {
-        int rc = lua_pcall(g_L,0,0,0);        
-        if (rc != 0)
-        {
-          const char *err = lua_tostring(g_L,1);
-          syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
-        }
-      }
-      else
-      {
-        syslog(LOG_DEBUG,"user_signal is type '%s' not type 'function'",lua_typename(g_L,lua_type(g_L,1)));
-        lua_pop(g_L,1);
-      }
+      call_optional_luaf("user_signal");
     }
     
     if (mf_sigalarm)
     {
       mf_sigalarm = 0;
-      lua_getglobal(g_L,"alarm_handler");
-      if (lua_isfunction(g_L,1))
-      {
-        int rc = lua_pcall(g_L,0,0,0);
-        if (rc != 0)
-        {
-          const char *err = lua_tostring(g_L,1);
-          syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
-        }
-        alarm(g_alarm);
-      }
-      else
-      {
-        syslog(LOG_DEBUG,"alarm_handler is type '%s' not type 'function'",lua_typename(g_L,lua_type(g_L,1)));
-        lua_pop(g_L,1);
-      }
+      call_optional_luaf("alarm_handler");
     }
 
     events = epoll_wait(g_queue,list,MAX_EVENTS,-1);
@@ -438,18 +410,8 @@ int main(int argc,char *argv[])
       (*node->fn)(&list[i]);
     }
   }
-  
-  lua_getglobal(g_L,"cleanup");
-  if (lua_isfunction(g_L,1))
-  {
-    int rc = lua_pcall(g_L,0,0,0);
-    if (rc != 0)
-    {
-      const char *err = lua_tostring(g_L,1);
-      syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
-    }
-  }
-  
+
+  call_optional_luaf("cleanup");  
   lua_close(g_L);
   close(g_queue);
 
@@ -1061,7 +1023,7 @@ void load_script(void)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
+    syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
     return;
   }
   
@@ -1399,3 +1361,25 @@ int syslogintr_relay(lua_State *L)
 }
 
 /************************************************************************/
+
+void call_optional_luaf(const char *fname)
+{
+  lua_getglobal(g_L,fname);
+  if (lua_isfunction(g_L,-1))
+  {
+    int rc = lua_pcall(g_L,0,0,0);
+    if (rc != 0)
+    {
+      const char *err = lua_tostring(g_L,1);
+      syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
+    }
+  }
+  else if (!lua_isnil(g_L,-1))
+  {
+    syslog(LOG_WARNING,"%s is type '%s' not type 'function'",fname,lua_typename(g_L,lua_type(g_L,1)));
+    lua_pop(g_L,1);
+  }
+}
+
+/**********************************************************************/
+
