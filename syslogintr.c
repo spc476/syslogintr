@@ -191,7 +191,7 @@ struct msg
 void		ipv4_socket		(void);
 void		ipv6_socket		(void);
 void		local_socket		(void);
-int		create_socket		(struct sockaddr *,socklen_t);
+void		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
 void		lua_interp		(sockaddr_all *,sockaddr_all *,const char *);
 void		process_msg		(const struct msg *const);
@@ -226,12 +226,9 @@ const char          *g_group;
 int                  gf_debug;
 int                  gf_foreground;
 lua_State           *g_L;
-struct sockaddr_in   g_aipv4;
-struct sockaddr_in6  g_aipv6;
-struct sockaddr_un   g_alocal;
-int                  g_sipv4       = -1;
-int                  g_sipv6       = -1;
-int                  g_slocal      = -1;
+struct listen_node   g_ipv4;
+struct listen_node   g_ipv6;
+struct listen_node   g_local;
 
 const struct option c_options[] =
 {
@@ -291,7 +288,7 @@ const char *const c_level[] =
   "debug"
 };
 
-struct sysstring c_null = { 0 , "" } ;
+const struct sysstring c_null = { 0 , "" } ;
 
 volatile sig_atomic_t mf_sigint;
 volatile sig_atomic_t mf_sigusr1;
@@ -303,6 +300,10 @@ volatile sig_atomic_t mf_sigalarm;
 int main(int argc,char *argv[])
 {
   FILE *fppid;
+  
+  g_ipv4.sock  = -1;
+  g_ipv6.sock  = -1;
+  g_local.sock = -1;
   
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
@@ -414,11 +415,11 @@ int main(int argc,char *argv[])
   call_optional_luaf("cleanup");  
   lua_close(g_L);
   close(g_queue);
-
-  if (g_slocal != -1) close(g_slocal);
-  if (g_sipv6  != -1) close(g_sipv6);
-  if (g_sipv4  != -1) close(g_sipv4);
   
+  if (g_local.sock != -1) close(g_local.sock);
+  if (g_ipv6.sock  != -1) close(g_local.sock);
+  if (g_ipv4.sock  != -1) close(g_local.sock);
+
   unlink(PID_FILE);	/* don't care if this succeeds or not */
   return EXIT_SUCCESS;
 }
@@ -427,55 +428,49 @@ int main(int argc,char *argv[])
 
 void ipv4_socket(void)
 {
-  inet_pton(AF_INET,LOG_IPv4,&g_aipv4.sin_addr.s_addr);
-  g_aipv4.sin_family = AF_INET;
-  g_aipv4.sin_port   = htons(LOG_PORT);
-  g_sipv4            = create_socket((struct sockaddr *)&g_aipv4,sizeof(g_aipv4));
+  inet_pton(AF_INET,LOG_IPv4,&g_ipv4.local.sin.sin_addr.s_addr);
+  g_ipv4.local.sin.sin_family = AF_INET;
+  g_ipv4.local.sin.sin_port   = htons(LOG_PORT);
+  create_socket(&g_ipv4,sizeof(g_ipv4.local.sin));
 }
 
 /*************************************************************/
 
 void ipv6_socket(void)
 {
-  inet_pton(AF_INET6,LOG_IPv6,&g_aipv6.sin6_addr.s6_addr);
-  g_aipv6.sin6_family = AF_INET6;
-  g_aipv6.sin6_port   = htons(LOG_PORT);
-  g_sipv6             = create_socket((struct sockaddr *)&g_aipv6,sizeof(g_aipv6));
+  inet_pton(AF_INET6,LOG_IPv6,&g_ipv6.local.sin6.sin6_addr.s6_addr);
+  g_ipv6.local.sin6.sin6_family = AF_INET6;
+  g_ipv6.local.sin6.sin6_port   = htons(LOG_PORT);
+  create_socket(&g_ipv6,sizeof(g_ipv6.local.sin6));
 }
 
 /**************************************************************/
 
 void local_socket(void)
 {
-  mode_t orig;
+  mode_t oldmask;
   
-  orig = umask(0111);
+  oldmask = umask(0111);
   unlink(LOG_LOCAL);
-  strcpy(g_alocal.sun_path,LOG_LOCAL);
-  g_alocal.sun_family = AF_LOCAL;
-  g_slocal            = create_socket((struct sockaddr *)&g_alocal,sizeof(g_alocal));
-  umask(orig);
+  strcpy(g_local.local.sun.sun_path,LOG_LOCAL);
+  g_local.local.sun.sun_family = AF_LOCAL;
+  create_socket(&g_local,sizeof(g_local.local.sun));
+  umask(oldmask);
 }
 
 /*******************************************************************/
 
-int create_socket(struct sockaddr *paddr,socklen_t saddr)
+void create_socket(ListenNode listen,socklen_t saddr)
 {
-  ListenNode          listen;
   struct epoll_event  ev;
   int                 rc;
   int                 reuse = 1;
-  
-  assert(paddr != NULL);
-  assert(saddr > 0);
-  
-  listen = malloc(sizeof(struct listen_node));
-  
-  memset(listen,0,sizeof(struct listen_node));
-  memcpy(&listen->local,paddr,saddr);
+
+  assert(listen != NULL);  
+  assert(saddr  >  0);
   
   listen->fn   = event_read;
-  listen->sock = socket(paddr->sa_family,SOCK_DGRAM,0);
+  listen->sock = socket(listen->local.ss.sa_family,SOCK_DGRAM,0);
   
   rc = setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
   if (rc == -1)
@@ -498,7 +493,7 @@ int create_socket(struct sockaddr *paddr,socklen_t saddr)
     exit(EXIT_FAILURE);
   }
 
-  rc = bind(listen->sock,paddr,saddr);
+  rc = bind(listen->sock,&listen->local.ss,saddr);
   if (rc == -1)
   {
     perror("bind()");
@@ -515,8 +510,6 @@ int create_socket(struct sockaddr *paddr,socklen_t saddr)
     perror("epoll_ctl(ADD)");
     exit(EXIT_FAILURE);
   }
-
-  return listen->sock;
 }
   
 /*****************************************************************/  
@@ -1071,7 +1064,7 @@ void daemon_init(void)
   lua_pushstring(g_L,"r");
   lua_call(g_L,2,1);
   lua_setfield(g_L,-2,"stdin");
-    
+  
   lua_getfield(g_L,-1,"open");
   lua_pushstring(g_L,"/dev/null");
   lua_pushstring(g_L,"w");
@@ -1133,10 +1126,7 @@ void set_signal_handler(int sig,void (*handler)(int))
   act.sa_flags   = 0;
   rc = sigaction(sig,&act,&oact);
   if (rc == -1)
-  {
     perror("sigaction()");
-    exit(EXIT_FAILURE);
-  }
 }
 
 /**************************************************************************/
@@ -1334,16 +1324,16 @@ int syslogintr_relay(lua_State *L)
     output[size] = '\0';
   }
   
-  if ((paddr->ss.sa_family == AF_INET) && (g_sipv4 > -1))
+  if ((paddr->ss.sa_family == AF_INET) && (g_ipv4.sock > -1))
   {
-    assert(g_aipv4.sin_family == AF_INET);
-    if (sendto(g_sipv4,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
+    assert(g_ipv4.local.sin.sin_family == AF_INET);
+    if (sendto(g_ipv4.sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
       syslog(LOG_ERR,"sendto(ipv4) = %s",strerror(errno));
   }
-  else if ((paddr->ss.sa_family == AF_INET6) && (g_sipv6 > -1))
+  else if ((paddr->ss.sa_family == AF_INET6) && (g_ipv6.sock > -1))
   {
-    assert(g_aipv6.sin6_family == AF_INET6);
-    if (sendto(g_sipv6,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
+    assert(g_ipv6.local.sin6.sin6_family == AF_INET6);
+    if (sendto(g_ipv6.sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
       syslog(LOG_ERR,"sendto(ipv6) = %s",strerror(errno));
   }
   else
