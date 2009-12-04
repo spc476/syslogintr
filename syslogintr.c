@@ -886,13 +886,13 @@ void parse_options(int argc,char *argv[])
            g_slfacility = map_str_to_int(optarg,c_facility,MAX_FACILITY) << 3;
            break;
       case OPT_LOG_IDENT:
-           g_slident = strdup(optarg);
+           g_slident = optarg;
            break;
       case OPT_USER:
-           g_user = strdup(optarg);
+           g_user = optarg;
            break;
       case OPT_GROUP:
-           g_group = strdup(optarg);
+           g_group = optarg;
            break;
       case OPT_HELP:
            usage(argv[0]);
