@@ -66,11 +66,11 @@ function log(msg)
 end
 
 -- ***************************************************************
--- * function called when the daemon receives SIGUSR2.  There are
+-- * function called when the daemon receives SIGHUP.  There are
 -- * no paramters given, nor are any expected from it.
 -- ***************************************************************
 
-function user_handler()
+function reload_signal()
   log{
   	host      = "(internal)",
   	program   = "minsys",

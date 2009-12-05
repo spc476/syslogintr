@@ -35,7 +35,7 @@ alarm("60m")
 
 -- *******************************************************
 
-function user_signal()
+function reload_signal()
   if logfile ~= io.stdout then
     logfile:close()
     logfile = io.open("/tmp/log","a") or io.stdout

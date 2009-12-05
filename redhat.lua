@@ -44,7 +44,7 @@ openfiles()
 
 -- *********************************************************************
 
-function user_signal()
+function reload_signal()
   closefiles()
   openfiles()
 end
