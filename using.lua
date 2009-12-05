@@ -20,15 +20,13 @@
 --
 -- ********************************************************************
 
-require "env"
-
 if blocked == nil then
   blocked = {}
   os.execute("iptables --table filter -F INPUT")
 end
 
 if logfile == nil then
-  logfile = io.open("/tmp/log","a") or io.stdout
+  logfile = io.open("/var/log/syslog","a") or io.stdout
 end
 
 alarm("60m")
@@ -38,7 +36,7 @@ alarm("60m")
 function reload_signal()
   if logfile ~= io.stdout then
     logfile:close()
-    logfile = io.open("/tmp/log","a") or io.stdout
+    logfile = io.open("/var/log/syslog","a") or io.stdout
   end
   I_log("debug","signal received loud and clear and reset logfile")
 end
@@ -148,4 +146,3 @@ end
 -- ******************************************************
 
 I_log("debug","reloaded script")
-I_log("debug",string.format("env is %s",env.HOME))
