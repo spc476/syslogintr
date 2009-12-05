@@ -48,8 +48,8 @@
 * meaning you can extend the script, then have the changes take affect
 * without restarting the program.
 *
-* Sending this program a SIGUSR2 will cause it to look for a Lua function
-* called user_signal() and call that.  user_signal() has no parameters,
+* Sending this program a SIGHUP will cause it to look for a Lua function
+* called reload_signal() and call that.  reload_signal() has no parameters,
 * and returns no parameters.
 *
 * You can also schedule a function to run periodically with the Lua 
@@ -292,7 +292,7 @@ const struct sysstring c_null = { 0 , "" } ;
 
 volatile sig_atomic_t mf_sigint;
 volatile sig_atomic_t mf_sigusr1;
-volatile sig_atomic_t mf_sigusr2;
+volatile sig_atomic_t mf_sighup;
 volatile sig_atomic_t mf_sigalarm;
 
 /***************************************************************/
@@ -307,7 +307,7 @@ int main(int argc,char *argv[])
   
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
-  set_signal_handler(SIGUSR2,handle_signal);
+  set_signal_handler(SIGHUP ,handle_signal);
   set_signal_handler(SIGALRM,handle_signal);
   
   g_queue = epoll_create(MAX_EVENTS);
@@ -390,10 +390,10 @@ int main(int argc,char *argv[])
       mf_sigusr1 = 0;
     }
 
-    if (mf_sigusr2)
+    if (mf_sighup)
     {
-      mf_sigusr2 = 0;
-      call_optional_luaf("user_signal");
+      mf_sighup = 0;
+      call_optional_luaf("reload_signal");
     }
     
     if (mf_sigalarm)
@@ -1105,7 +1105,7 @@ void handle_signal(int sig)
   {
     case SIGINT:  mf_sigint   = 1; break;
     case SIGUSR1: mf_sigusr1  = 1; break;
-    case SIGUSR2: mf_sigusr2  = 1; break;
+    case SIGHUP:  mf_sighup   = 1; break;
     case SIGALRM: mf_sigalarm = 1; break;
     default: break;
   }
