@@ -127,10 +127,10 @@
 #define LOG_IPv6	"::"
 #define LOG_IDENT	"syslogl"
 
-#define LUA_CODE	"minsys.lua"
+#define LUA_CODE	"/usr/local/sbin/syslog.lua"
 #define LUA_UD_HOST	"SOCKADDR"
 
-#define PID_FILE	"/var/run/syslogl.pid"
+#define PID_FILE	"/var/run/syslogd.pid"
 
 /*****************************************************************/
 
@@ -853,6 +853,7 @@ void process_msg(const struct msg *const pmsg)
   {
     err = lua_tostring(g_L,1);
     syslog(LOG_ERR,"Lua ERROR(%d): %s",rc,err);
+    lua_pop(g_L,1);
   }
 }
 
@@ -1009,6 +1010,7 @@ void load_script(void)
   {
     const char *err = lua_tostring(g_L,1);
     syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
+    lua_pop(g_L,1);
     return;
   }
   
@@ -1017,6 +1019,7 @@ void load_script(void)
   {
     const char *err = lua_tostring(g_L,1);
     syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
+    lua_pop(g_L,1);
     return;
   }
   
@@ -1362,6 +1365,7 @@ void call_optional_luaf(const char *fname)
     {
       const char *err = lua_tostring(g_L,1);
       syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
+      lua_pop(g_L,1);
     }
   }
   else if (!lua_isnil(g_L,-1))
