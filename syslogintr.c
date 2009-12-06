@@ -386,8 +386,8 @@ int main(int argc,char *argv[])
 
     if (mf_sigusr1)
     {
-      load_script();
       mf_sigusr1 = 0;
+      load_script();
     }
 
     if (mf_sighup)
