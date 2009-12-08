@@ -558,8 +558,6 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   int        value;
   char      *p;
   char      *q;
-  size_t     i;
-  int        rc;
   
   assert(ploc   != NULL);
   assert(pss    != NULL);
