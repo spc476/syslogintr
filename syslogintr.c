@@ -1163,6 +1163,7 @@ int syslogintr_alarm(lua_State *L)
     }
   }
   
+  syslog(LOG_DEBUG,"Alarm set for %d seconds\n",g_alarm);
   alarm(g_alarm);
   lua_pop(L,1);
   return 0;
