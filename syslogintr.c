@@ -400,6 +400,7 @@ int main(int argc,char *argv[])
     {
       mf_sigalarm = 0;
       call_optional_luaf("alarm_handler");
+      alarm(g_alarm);
     }
 
     events = epoll_wait(g_queue,list,MAX_EVENTS,-1);
