@@ -642,8 +642,8 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     msg.logtimestamp = mktime(&dateread);
     if (*q != ' ')
     {
-      msg.facility = LOG_USER;
-      msg.level    = LOG_NOTICE;
+      msg.facility = 1;	/* LOG_USER */
+      msg.level    = 5; /*LOG_NOTICE */
       msg.msg      = msg.raw;
       process_msg(&msg);
       return;
