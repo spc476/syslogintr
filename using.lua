@@ -29,6 +29,10 @@ if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
 end
 
+if namedfile == nil then
+  namedfile = io.open("/tmp/named.log","a") or io.stdout
+end
+
 alarm("60m")
 
 -- *******************************************************
@@ -38,6 +42,12 @@ function reload_signal()
     logfile:close()
     logfile = io.open("/var/log/syslog","a") or io.stdout
   end
+  
+  if namedfile ~= nil then
+    namedfile:close()
+    namedfile = io.open("/tmp/named.log","a") or io.stdout
+  end
+  
   I_log("debug","signal received loud and clear and reset logfile")
 end
 
@@ -66,7 +76,9 @@ end
 -- ******************************************************
 
 function log(msg)  
-  writelog(msg)
+  if named(msg) == false then
+    writelog(msg)
+  end
   sshd(msg)
 end
 
@@ -130,6 +142,16 @@ function sshd(msg)
 end
 
 -- *******************************************************
+
+function named(msg)
+  if msg.remote  == true    then return false end
+  if msg.program ~= 'named' then return false end
+  
+  log_to_file(namedfile,msg)
+  return true
+end
+
+-- *****************************************************
 
 function I_log(level,msg)
   log{
