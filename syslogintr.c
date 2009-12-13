@@ -729,25 +729,46 @@ void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     if (q)
     {
       char *b;
-    
-      b = memchr(p,' ',(size_t)(q - p));
-      if (b != NULL)
-      {
-        msg.relay     = msg.host;
-        msg.host.text = p;
-        msg.host.size = (size_t)(b - p);
-        p = b + 1;
-      }
-    
-      b = memchr(p,'[',(size_t)(q - p));
-      if (b)
-        msg.pid = strtoul(b + 1,NULL,10);
-      else
-        b = q;
       
-      msg.program.text = p;
-      msg.program.size = (size_t)(b - p);
+      /*------------------------------------------------------
+      ; Complication 4: when starting up, the default syslogd
+      ; that comes with Linux systems these days send a message
+      ; in the format of 
+      ;
+      ;		<N>syslogd x.y.z: blahblahbalbh
+      ;
+      ; which, according to the spec, interpreted as a host
+      ; syslog with a program of x.y.z sending the message.
+      ;
+      ; This handles that case.
+      ;-------------------------------------------------------*/
+      
+      if (strncmp(p,"syslogd",7) == 0)
+      {
+        msg.program.text = p;
+        msg.program.size = (size_t)(q - p);
+      }
+      else
+      {
+        b = memchr(p,' ',(size_t)(q - p));
+        if (b != NULL)
+        {
+          msg.relay     = msg.host;
+          msg.host.text = p;
+          msg.host.size = (size_t)(b - p);
+          p = b + 1;
+        }
     
+        b = memchr(p,'[',(size_t)(q - p));
+        if (b)
+          msg.pid = strtoul(b + 1,NULL,10);
+        else
+          b = q;
+      
+        msg.program.text = p;
+        msg.program.size = (size_t)(b - p);
+      }
+      
       for (p = q + 1 ; *p && isspace(*p) ; p++)
         ;      
     }
