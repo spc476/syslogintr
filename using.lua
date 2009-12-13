@@ -136,7 +136,7 @@ function I_log(level,msg)
   log{
   	host      = "(internal)",
   	remote    = false,
-  	program   = "minsys",
+  	program   = script,
   	facility  = "daemon",
   	level     = level,
   	timestamp = os.time(),
@@ -146,4 +146,4 @@ end
 
 -- ******************************************************
 
-I_log("debug","reloaded script")
+I_log("debug","reloaded " .. script)
