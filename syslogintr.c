@@ -171,19 +171,19 @@ struct sysstring
 
 struct msg
 {
-  int              version;
-  struct sysstring raw;
-  struct sysstring host;
-  struct sysstring relay;
-  int              port;
-  bool             remote;
-  time_t           timestamp;
-  time_t           logtimestamp;
-  struct sysstring program;
-  int              pid;  
-  int              facility;
+  int              version;	/* syslog version---RFC3164=0		*/
+  struct sysstring raw;		/* raw message (debugging purposes)	*/
+  struct sysstring host;	/* address of original sending host 	*/
+  struct sysstring relay;	/* address of host that sent msg 	*/
+  int              port;	/* UDP port of sending host		*/
+  bool             remote;	/* true if syslog from remote		*/
+  time_t           timestamp;	/* timestamp of received syslog 	*/
+  time_t           logtimestamp; /* original timestamp 			*/
+  struct sysstring program;	/* program that generated syslog	*/
+  int              pid;  	/* process id of said program		*/
+  int              facility;	
   int              level;
-  struct sysstring msg;
+  struct sysstring msg;		/* syslog message			*/
 };
 
 /******************************************************************/
