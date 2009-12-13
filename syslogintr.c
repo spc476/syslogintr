@@ -352,7 +352,7 @@ int main(int argc,char *argv[])
   lua_register(g_L,"alarm",syslogintr_alarm);
   lua_register(g_L,"host", syslogintr_host);
   lua_register(g_L,"relay",syslogintr_relay);
-  
+
   luaL_newmetatable(g_L,LUA_UD_HOST);
   lua_pushliteral(g_L,"__tostring");
   lua_pushcfunction(g_L,syslogintr_ud__toprint);
@@ -361,6 +361,9 @@ int main(int argc,char *argv[])
   
   if (optind < argc)
     g_luacode = argv[optind];
+  
+  lua_pushstring(g_L,g_luacode);
+  lua_setglobal(g_L,"script");
   
   load_script();
 
