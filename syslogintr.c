@@ -363,6 +363,14 @@ int main(int argc,char *argv[])
     g_luacode = argv[optind];
   
   lua_pushstring(g_L,g_luacode);
+  lua_setglobal(g_L,"scriptpath");
+  
+  /*--------------------------------------------
+  ; the GNU version of basename() doesn't modify 
+  ; the given string.  
+  ;-------------------------------------------*/
+  
+  lua_pushstring(g_L,basename(g_luacode));
   lua_setglobal(g_L,"script");
   
   load_script();
