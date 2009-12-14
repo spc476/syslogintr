@@ -147,6 +147,13 @@ enum
   OPT_HELP
 };
 
+typedef struct status
+{
+  bool  okay;
+  int   err;
+  char *msg;
+} Status;
+
 typedef union sockaddr_all
 {
   struct sockaddr         ss;
@@ -188,26 +195,39 @@ struct msg
 
 /******************************************************************/
 
-void		ipv4_socket		(void);
-void		ipv6_socket		(void);
-void		local_socket		(void);
-void		create_socket		(ListenNode,socklen_t);
+Status		ipv4_socket		(void);
+Status		ipv6_socket		(void);
+Status		local_socket		(void);
+Status		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
 void		lua_interp		(sockaddr_all *,sockaddr_all *,const char *);
 void		process_msg		(const struct msg *const);
-void		parse_options		(int,char *[]);
+Status		parse_options		(int,char *[]);
 void		usage			(const char *);
-void		drop_privs		(void);
-void		daemon_init		(void);
+Status		drop_privs		(void);
+Status		daemon_init		(void);
 void		load_script		(void);
 int		map_str_to_int		(const char *,const char *const [],size_t);
 void		handle_signal		(int);
-void		set_signal_handler	(int,void (*)(int));
+Status		set_signal_handler	(int,void (*)(int));
 int		syslogintr_alarm	(lua_State *);
 int		syslogintr_ud__toprint	(lua_State *);
 int		syslogintr_host		(lua_State *);
 int		syslogintr_relay	(lua_State *);
 void		call_optional_luaf	(const char *);
+
+/******************************************************************/
+
+static inline Status retstatus(bool okay,int err,char *msg)
+{
+  assert(msg != NULL);
+  
+  return (Status){
+                   .okay = okay,
+                   .err  = err,
+                   .msg  = msg
+                 };
+}
 
 /******************************************************************/
 
@@ -289,6 +309,7 @@ const char *const c_level[] =
 };
 
 const struct sysstring c_null = { 0 , "" } ;
+const struct status    c_okay = { true , 0 , "" } ;
 
 volatile sig_atomic_t mf_sigint;
 volatile sig_atomic_t mf_sigusr1;
@@ -299,7 +320,8 @@ volatile sig_atomic_t mf_sigalarm;
 
 int main(int argc,char *argv[])
 {
-  FILE *fppid;
+  Status  status;
+  FILE   *fppid;
   
   g_ipv4.sock  = -1;
   g_ipv6.sock  = -1;
@@ -317,7 +339,14 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
-  parse_options(argc,argv);
+  status = parse_options(argc,argv);
+  if (!status.okay)
+  {
+    if (status.err != 0)
+      perror(status.msg);
+    return EXIT_FAILURE;
+  }
+  
   openlog(g_slident,0,g_slfacility);
 
   /*--------------------------------------------------------
@@ -330,7 +359,12 @@ int main(int argc,char *argv[])
   ;---------------------------------------------------------*/
   
   fppid = fopen(PID_FILE,"w");
-  drop_privs();
+  status = drop_privs();
+  if (!status.okay)
+  {
+    perror(status.msg);
+    return EXIT_FAILURE;
+  }
   
   if (gf_debug)
   {
@@ -342,7 +376,7 @@ int main(int argc,char *argv[])
   if (g_L == NULL)
   {
     perror("lua_open()");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
   
   lua_gc(g_L,LUA_GCSTOP,0);
@@ -376,7 +410,14 @@ int main(int argc,char *argv[])
   load_script();
 
   if (!gf_foreground)
-    daemon_init();
+  {
+    status = daemon_init();
+    if (!status.okay)
+    {
+      perror(status.msg);
+      return EXIT_FAILURE;
+    }
+  }
 
   if (fppid != NULL)
   {
@@ -438,41 +479,43 @@ int main(int argc,char *argv[])
 
 /*************************************************************/
 
-void ipv4_socket(void)
+Status ipv4_socket(void)
 {
   inet_pton(AF_INET,LOG_IPv4,&g_ipv4.local.sin.sin_addr.s_addr);
   g_ipv4.local.sin.sin_family = AF_INET;
   g_ipv4.local.sin.sin_port   = htons(LOG_PORT);
-  create_socket(&g_ipv4,sizeof(g_ipv4.local.sin));
+  return create_socket(&g_ipv4,sizeof(g_ipv4.local.sin));
 }
 
 /*************************************************************/
 
-void ipv6_socket(void)
+Status ipv6_socket(void)
 {
   inet_pton(AF_INET6,LOG_IPv6,&g_ipv6.local.sin6.sin6_addr.s6_addr);
   g_ipv6.local.sin6.sin6_family = AF_INET6;
   g_ipv6.local.sin6.sin6_port   = htons(LOG_PORT);
-  create_socket(&g_ipv6,sizeof(g_ipv6.local.sin6));
+  return create_socket(&g_ipv6,sizeof(g_ipv6.local.sin6));
 }
 
 /**************************************************************/
 
-void local_socket(void)
+Status local_socket(void)
 {
+  Status status;
   mode_t oldmask;
   
   oldmask = umask(0111);
   unlink(LOG_LOCAL);
   strcpy(g_local.local.sun.sun_path,LOG_LOCAL);
   g_local.local.sun.sun_family = AF_LOCAL;
-  create_socket(&g_local,sizeof(g_local.local.sun));
+  status = create_socket(&g_local,sizeof(g_local.local.sun));
   umask(oldmask);
+  return status;
 }
 
 /*******************************************************************/
 
-void create_socket(ListenNode listen,socklen_t saddr)
+Status create_socket(ListenNode listen,socklen_t saddr)
 {
   struct epoll_event  ev;
   int                 rc;
@@ -484,44 +527,27 @@ void create_socket(ListenNode listen,socklen_t saddr)
   listen->fn   = event_read;
   listen->sock = socket(listen->local.ss.sa_family,SOCK_DGRAM,0);
   
-  rc = setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse));
-  if (rc == -1)
-  {
-    perror("setsockopt()");
-    exit(EXIT_FAILURE);
-  }
+  if (setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse)) == -1)
+    return retstatus(false,errno,"setsockopt()");
 
   rc = fcntl(listen->sock,F_GETFL,0);
   if (rc == -1)
-  {
-    perror("fcntl(GETFL)");
-    exit(EXIT_FAILURE);
-  }
+    return retstatus(false,errno,"fcntl(GETFL)");
   
-  rc = fcntl(listen->sock,F_SETFL,rc | O_NONBLOCK);
-  if (rc == -1)
-  {
-    perror("fcntl(SETFL)");
-    exit(EXIT_FAILURE);
-  }
+  if (fcntl(listen->sock,F_SETFL,rc | O_NONBLOCK) == -1)
+    return retstatus(false,errno,"fcntl(SETFL)");
 
-  rc = bind(listen->sock,&listen->local.ss,saddr);
-  if (rc == -1)
-  {
-    perror("bind()");
-    exit(EXIT_FAILURE);
-  }
+  if (bind(listen->sock,&listen->local.ss,saddr) == -1)
+    return retstatus(false,errno,"bind()");
   
   memset(&ev,0,sizeof(ev));
   ev.events   = EPOLLIN;
   ev.data.ptr = listen;
   
-  rc = epoll_ctl(g_queue,EPOLL_CTL_ADD,listen->sock,&ev);
-  if (rc == -1)
-  {
-    perror("epoll_ctl(ADD)");
-    exit(EXIT_FAILURE);
-  }
+  if (epoll_ctl(g_queue,EPOLL_CTL_ADD,listen->sock,&ev) == -1)
+    return retstatus(false,errno,"epoll_ctl(ADD)");
+ 
+  return c_okay;
 }
   
 /*****************************************************************/  
@@ -544,7 +570,7 @@ void event_read(struct epoll_event *ev)
   if (bytes == -1)
   {
     if (errno == EINTR) return;
-    perror("recvfrom()");
+    syslog(LOG_DEBUG,"recvfrom() = %s",strerror(errno));
     return;
   }
   
@@ -890,29 +916,35 @@ void process_msg(const struct msg *const pmsg)
 
 /**********************************************************************/
 
-void parse_options(int argc,char *argv[])
+Status parse_options(int argc,char *argv[])
 {
-  int option = 0;
+  Status status;
+  int    option = 0;
   
   assert(argc >  0);
   assert(argv != NULL);
+  
+  opterr = 0;	/* prevent getopt_long_only() from printing error message */
   
   while(true)
   {
     switch(getopt_long_only(argc,argv,"",c_options,&option))
     {
       case EOF:      
-           return;
+           return c_okay;
       case OPT_NONE: 
            break;
       case OPT_IPv4:
-           ipv4_socket();
+           status = ipv4_socket();
+           if (!status.okay) return status;
            break;
       case OPT_IPv6:
-           ipv6_socket();
+           status = ipv6_socket();
+           if (!status.okay) return status;
            break;
       case OPT_LOCAL:
-           local_socket();
+           status = local_socket();
+           if (!status.okay) return status;
            break;
       case OPT_LOG_FACILITY:
            g_slfacility = map_str_to_int(optarg,c_facility,MAX_FACILITY) << 3;
@@ -928,13 +960,12 @@ void parse_options(int argc,char *argv[])
            break;
       case OPT_HELP:
            usage(argv[0]);
-           exit(EXIT_FAILURE);
+           return retstatus(false,0,"");
       default:
-           assert(0);
-           break;
+           return retstatus(false,EINVAL,"getopt_long_only()");
     }
   }
-}
+} 
 
 /*****************************************************************/
 
@@ -965,27 +996,21 @@ void usage(const char *progname)
 
 /*******************************************************************/
 
-void drop_privs(void)
+Status drop_privs(void)
 {
-  int rc;
-  
   if (g_user == NULL)	/* if no user specified, we won't drop */
-    return;
+    return c_okay;
     
   if (getuid() != 0)	/* if not root, we can't drop privs */
-    return;
+    return c_okay;
 
   long           ubufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
   char           ubuffer[ubufsize];
   struct passwd  uinfo;
   struct passwd *uresult;
   
-  rc = getpwnam_r(g_user,&uinfo,ubuffer,ubufsize,&uresult);
-  if (rc != 0)
-  {
-    perror("getpwnam_r()");
-    exit(EXIT_FAILURE);
-  }
+  if (getpwnam_r(g_user,&uinfo,ubuffer,ubufsize,&uresult) != 0)
+    return retstatus(false,errno,"getpwnam_r()");
   
   long          gbufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
   char          gbuffer[gbufsize];
@@ -994,12 +1019,8 @@ void drop_privs(void)
   
   if (g_group == NULL)
   {
-    rc = getgrnam_r(g_group,&ginfo,gbuffer,gbufsize,&gresult);
-    if (rc != 0)
-    {
-      perror("getgrnam_r()");
-      exit(EXIT_FAILURE);
-    }
+    if (getgrnam_r(g_group,&ginfo,gbuffer,gbufsize,&gresult) != 0)
+      return retstatus(false,errno,"getgrnam_r()");
   }
   else
     ginfo.gr_gid = uinfo.pw_gid;
@@ -1013,21 +1034,14 @@ void drop_privs(void)
   
   chown(PID_FILE,uinfo.pw_uid,ginfo.gr_gid);	/* don't care about results */
 
-  rc = setgid(ginfo.gr_gid);
-  if (rc  == -1)
-  {
-    perror("setgid()");
-    exit(EXIT_FAILURE);
-  }
+  if (setgid(ginfo.gr_gid) == -1)
+    return retstatus(false,errno,"setgid()");
   
-  rc = setuid(uinfo.pw_uid);
-  if (rc == -1)
-  {
-    perror("setuid()");
-    exit(EXIT_FAILURE);
-  }
+  if (setuid(uinfo.pw_uid) == -1)
+    return retstatus(false,errno,"getuid()");
   
   syslog(LOG_DEBUG,"dropped privs to %s:%s",g_user,g_group);
+  return c_okay;
 }
 
 /*************************************************************************/
@@ -1059,16 +1073,13 @@ void load_script(void)
 
 /*************************************************************************/
 
-void daemon_init(void)
+Status daemon_init(void)
 {
   pid_t pid;
   
   pid = fork();
   if (pid == (pid_t)-1)
-  {
-    perror("fork()");
-    exit(EXIT_FAILURE);
-  }
+    return retstatus(false,errno,"fork()");
   else if (pid != 0)	/* parent goes bye bye */
     exit(EXIT_SUCCESS);
   
@@ -1113,6 +1124,7 @@ void daemon_init(void)
     
   lua_pop(g_L,lua_gettop(g_L));
   syslog(LOG_DEBUG,"reopened io.stdin, io.stdout and io.stderr");
+  return c_okay;
 }
 
 /***********************************************************************/
@@ -1147,20 +1159,20 @@ void handle_signal(int sig)
 
 /**********************************************************************/
 
-void set_signal_handler(int sig,void (*handler)(int))
+Status set_signal_handler(int sig,void (*handler)(int))
 {
   struct sigaction act;
   struct sigaction oact;
-  int              rc;
   
   assert(handler != NULL);
   
   sigemptyset(&act.sa_mask);
   act.sa_handler = handler;
   act.sa_flags   = 0;
-  rc = sigaction(sig,&act,&oact);
-  if (rc == -1)
-    perror("sigaction()");
+  
+  if (sigaction(sig,&act,&oact) == -1)
+    return retstatus(false,errno,"sigaction()");
+  return c_okay;
 }
 
 /**************************************************************************/
