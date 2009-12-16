@@ -125,7 +125,6 @@
 #define LOG_LOCAL	"/dev/log"
 #define LOG_IPv4	"0.0.0.0"
 #define LOG_IPv6	"::"
-#define LOG_IDENT	"syslogintr"
 
 #define LUA_CODE	"/usr/local/sbin/syslog.lua"
 #define LUA_UD_HOST	"SOCKADDR"
@@ -139,7 +138,6 @@ enum
   OPT_NONE,
   OPT_USER,
   OPT_GROUP,
-  OPT_LOG_IDENT,
   OPT_LOG_FACILITY,
   OPT_IPv4,
   OPT_IPv6,
@@ -238,7 +236,6 @@ extern int   optopt;
 
 int                  g_queue;
 unsigned int         g_alarm;
-const char          *g_slident     = LOG_IDENT;
 int                  g_slfacility  = LOG_SYSLOG;
 const char          *g_luacode     = LUA_CODE;
 const char          *g_user;
@@ -261,7 +258,6 @@ const struct option c_options[] =
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
   { "group"        , required_argument , NULL           , OPT_GROUP     } ,
   { "facility"     , required_argument , NULL           , OPT_LOG_FACILITY } ,
-  { "ident"        , required_argument , NULL           , OPT_LOG_IDENT } ,
   { "help"         , no_argument       , NULL           , OPT_HELP      } ,
   { NULL           , 0                 , NULL           , 0             }
 };
@@ -404,7 +400,7 @@ int main(int argc,char *argv[])
     fclose(fppid);
   }
 
-  openlog(g_slident,0,g_slfacility);
+  openlog(basename(argv[0]),0,g_slfacility);
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
   set_signal_handler(SIGINT, handle_signal);
@@ -939,9 +935,6 @@ Status parse_options(int argc,char *argv[])
       case OPT_LOG_FACILITY:
            g_slfacility = map_str_to_int(optarg,c_facility,MAX_FACILITY) << 3;
            break;
-      case OPT_LOG_IDENT:
-           g_slident = optarg;
-           break;
       case OPT_USER:
            g_user = optarg;
            break;
@@ -976,7 +969,6 @@ void usage(const char *progname)
         "\t--user  <username>        user to run as (no default)\n"
         "\t--group <groupname>       group to run as (no default)\n"
         "\t--facility <facility>     syslog facility (syslog)\n"
-        "\t--ident    <id>           syslog ident    (syslogl)\n"
         "\t--help                    this message\n"
         "\n",
         progname
