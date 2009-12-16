@@ -138,7 +138,7 @@ function I_log(level,msg)
   	host      = "(internal)",
   	remote    = false,
   	program   = script,
-  	facility  = "daemon",
+  	facility  = "syslog",
   	level     = level,
   	timestamp = os.time(),
   	msg       = msg
