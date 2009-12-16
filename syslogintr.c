@@ -125,7 +125,7 @@
 #define LOG_LOCAL	"/dev/log"
 #define LOG_IPv4	"0.0.0.0"
 #define LOG_IPv6	"::"
-#define LOG_IDENT	"syslogl"
+#define LOG_IDENT	"syslogintr"
 
 #define LUA_CODE	"/usr/local/sbin/syslog.lua"
 #define LUA_UD_HOST	"SOCKADDR"
