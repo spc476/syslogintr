@@ -197,7 +197,7 @@ Status		ipv6_socket		(void);
 Status		local_socket		(void);
 Status		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
-void		lua_interp		(sockaddr_all *,sockaddr_all *,const char *);
+void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *);
 void		process_msg		(const struct msg *const);
 Status		parse_options		(int,char *[]);
 void		usage			(const char *);
@@ -563,12 +563,12 @@ void event_read(struct epoll_event *ev)
     if (iscntrl(buffer[i]))
       buffer[i] = ' ';
       
-  lua_interp(&node->local,&remote,buffer);
+  syslog_interp(&node->local,&remote,buffer);
 }
 
 /*********************************************************************/
 
-void lua_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
+void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
 {
   struct msg msg;
   char       host[BUFSIZ];
