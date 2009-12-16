@@ -314,6 +314,8 @@ int main(int argc,char *argv[])
   Status  status;
   FILE   *fppid;
   
+  openlog(basename(argv[0]),0,LOG_SYSLOG);
+
   g_ipv4.sock  = -1;
   g_ipv6.sock  = -1;
   g_local.sock = -1;
@@ -397,7 +399,6 @@ int main(int argc,char *argv[])
     fclose(fppid);
   }
 
-  openlog(basename(argv[0]),0,LOG_SYSLOG);
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
   set_signal_handler(SIGINT, handle_signal);
