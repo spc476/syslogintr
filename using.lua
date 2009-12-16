@@ -45,6 +45,7 @@ end
 -- *******************************************************
 
 function alarm_handler()
+  I_log("debug","Alarm clock");
   if #blocked == 0 then
     I_log("debug","Alarm clock---snooze button!")
     return
