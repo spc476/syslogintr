@@ -138,7 +138,6 @@ enum
   OPT_NONE,
   OPT_USER,
   OPT_GROUP,
-  OPT_LOG_FACILITY,
   OPT_IPv4,
   OPT_IPv6,
   OPT_LOCAL,
@@ -236,7 +235,6 @@ extern int   optopt;
 
 int                  g_queue;
 unsigned int         g_alarm;
-int                  g_slfacility  = LOG_SYSLOG;
 const char          *g_luacode     = LUA_CODE;
 const char          *g_user;
 const char          *g_group;
@@ -257,7 +255,6 @@ const struct option c_options[] =
   { "foreground"   , no_argument       , &gf_foreground , true          } ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
   { "group"        , required_argument , NULL           , OPT_GROUP     } ,
-  { "facility"     , required_argument , NULL           , OPT_LOG_FACILITY } ,
   { "help"         , no_argument       , NULL           , OPT_HELP      } ,
   { NULL           , 0                 , NULL           , 0             }
 };
@@ -400,7 +397,7 @@ int main(int argc,char *argv[])
     fclose(fppid);
   }
 
-  openlog(basename(argv[0]),0,g_slfacility);
+  openlog(basename(argv[0]),0,LOG_SYSLOG);
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
   set_signal_handler(SIGINT, handle_signal);
@@ -932,9 +929,6 @@ Status parse_options(int argc,char *argv[])
            status = local_socket();
            if (!status.okay) return status;
            break;
-      case OPT_LOG_FACILITY:
-           g_slfacility = map_str_to_int(optarg,c_facility,MAX_FACILITY) << 3;
-           break;
       case OPT_USER:
            g_user = optarg;
            break;
@@ -968,7 +962,6 @@ void usage(const char *progname)
         "\t--foreground              run in foreground\n"
         "\t--user  <username>        user to run as (no default)\n"
         "\t--group <groupname>       group to run as (no default)\n"
-        "\t--facility <facility>     syslog facility (syslog)\n"
         "\t--help                    this message\n"
         "\n",
         progname
