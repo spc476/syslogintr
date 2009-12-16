@@ -384,13 +384,7 @@ int main(int argc,char *argv[])
   
   lua_pushstring(g_L,g_luacode);
   lua_setglobal(g_L,"scriptpath");
-  
-  /*--------------------------------------------
-  ; the GNU version of basename() doesn't modify 
-  ; the given string.  
-  ;-------------------------------------------*/
-  
-  lua_pushstring(g_L,basename(g_luacode));
+  lua_pushstring(g_L,basename(g_luacode)); /* GNU basename() no mod. params */
   lua_setglobal(g_L,"script");
 
   if (!gf_foreground)
@@ -545,7 +539,7 @@ Status create_socket(ListenNode listen,socklen_t saddr)
  
   return c_okay;
 }
-  
+ 
 /*****************************************************************/  
 
 void event_read(struct epoll_event *ev)
