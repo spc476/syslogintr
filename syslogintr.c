@@ -358,9 +358,6 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
 
-  openlog(g_slident,0,g_slfacility);
-  syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
-  
   g_L = lua_open();
   if (g_L == NULL)
   {
@@ -412,6 +409,9 @@ int main(int argc,char *argv[])
     fprintf(fppid,"%lu\n",(unsigned long)getpid());
     fclose(fppid);
   }
+
+  openlog(g_slident,0,g_slfacility);
+  syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
