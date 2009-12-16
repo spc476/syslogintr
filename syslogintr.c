@@ -243,7 +243,6 @@ int                  g_slfacility  = LOG_SYSLOG;
 const char          *g_luacode     = LUA_CODE;
 const char          *g_user;
 const char          *g_group;
-int                  gf_debug;
 int                  gf_foreground;
 lua_State           *g_L;
 struct listen_node   g_ipv4;
@@ -258,7 +257,6 @@ const struct option c_options[] =
   { "ip6"	   , no_argument       , NULL		, OPT_IPv6	} ,
   { "ipv6"	   , no_argument       , NULL		, OPT_IPv6	} ,
   { "local"	   , no_argument       , NULL		, OPT_LOCAL     } ,
-  { "debug"	   , no_argument       , &gf_debug      , true          } ,
   { "foreground"   , no_argument       , &gf_foreground , true          } ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
   { "group"        , required_argument , NULL           , OPT_GROUP     } ,
@@ -327,11 +325,6 @@ int main(int argc,char *argv[])
   g_ipv6.sock  = -1;
   g_local.sock = -1;
   
-  set_signal_handler(SIGINT, handle_signal);
-  set_signal_handler(SIGUSR1,handle_signal);
-  set_signal_handler(SIGHUP ,handle_signal);
-  set_signal_handler(SIGALRM,handle_signal);
-  
   g_queue = epoll_create(MAX_EVENTS);
   if (g_queue == -1)
   {
@@ -347,8 +340,6 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
-  openlog(g_slident,0,g_slfacility);
-
   /*--------------------------------------------------------
   ; it's unfortunate, but this is spread out quite a bit 
   ; throughout the code.  First, we open the PID file, but
@@ -359,18 +350,16 @@ int main(int argc,char *argv[])
   ;---------------------------------------------------------*/
   
   fppid = fopen(PID_FILE,"w");
+
   status = drop_privs();
   if (!status.okay)
   {
     perror(status.msg);
     return EXIT_FAILURE;
   }
-  
-  if (gf_debug)
-  {
-    usage(argv[0]);
-    syslog(LOG_DEBUG,"Starting program");
-  }
+
+  openlog(g_slident,0,g_slfacility);
+  syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
   
   g_L = lua_open();
   if (g_L == NULL)
@@ -406,14 +395,13 @@ int main(int argc,char *argv[])
   
   lua_pushstring(g_L,basename(g_luacode));
   lua_setglobal(g_L,"script");
-  
-  load_script();
 
   if (!gf_foreground)
   {
     status = daemon_init();
     if (!status.okay)
     {
+      syslog(LOG_ERR,"daemon_init() = %s",status.msg);
       perror(status.msg);
       return EXIT_FAILURE;
     }
@@ -424,7 +412,14 @@ int main(int argc,char *argv[])
     fprintf(fppid,"%lu\n",(unsigned long)getpid());
     fclose(fppid);
   }
-  
+
+  set_signal_handler(SIGINT, handle_signal);
+  set_signal_handler(SIGUSR1,handle_signal);
+  set_signal_handler(SIGHUP ,handle_signal);
+  set_signal_handler(SIGALRM,handle_signal);
+
+  load_script();
+
   while(true)
   {
     struct epoll_event list[MAX_EVENTS];
@@ -452,6 +447,7 @@ int main(int argc,char *argv[])
     {
       mf_sigalarm = 0;
       call_optional_luaf("alarm_handler");
+      syslog(LOG_DEBUG,"Rearmed alarm");
       alarm(g_alarm);
     }
 
@@ -982,7 +978,6 @@ void usage(const char *progname)
         "\t--ip6                     accept from IPv6 hosts\n"
         "\t--ipv6                           \"\n"
         "\t--local                   accept from " LOG_LOCAL "\n"
-        "\t--debug                   debug info\n"
         "\t--foreground              run in foreground\n"
         "\t--user  <username>        user to run as (no default)\n"
         "\t--group <groupname>       group to run as (no default)\n"
@@ -1081,7 +1076,7 @@ Status daemon_init(void)
   if (pid == (pid_t)-1)
     return retstatus(false,errno,"fork()");
   else if (pid != 0)	/* parent goes bye bye */
-    exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
   
   setsid();
   syslog(LOG_DEBUG,"gone into daemon mode");
@@ -1207,6 +1202,7 @@ int syslogintr_alarm(lua_State *L)
     }
   }
   
+  syslog(LOG_DEBUG,"Alarm PID: %lu",(unsigned long)getpid());
   syslog(LOG_DEBUG,"Alarm set for %d seconds\n",g_alarm);
   alarm(g_alarm);
   lua_pop(L,1);
