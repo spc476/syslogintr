@@ -835,7 +835,7 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
 
 /***********************************************************************/
 
-#if 0
+#ifdef CHECK_STRINGS
   static void clean_string(struct sysstring s)
   {
     assert(s.text != NULL);
@@ -854,7 +854,7 @@ void process_msg(const struct msg *const pmsg)
   
   assert(pmsg != NULL);
 
-#if 0
+#ifdef CHECK_STRINGS
   clean_string(pmsg->raw);
   clean_string(pmsg->host);
   clean_string(pmsg->relay);
