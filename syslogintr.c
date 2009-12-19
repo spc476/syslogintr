@@ -428,14 +428,12 @@ int main(int argc,char *argv[])
     fclose(fppid);
   }
 
-  syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
-
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
   set_signal_handler(SIGHUP ,handle_signal);
   set_signal_handler(SIGALRM,handle_signal);
-
   load_script();
+  syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
   while(true)
   {
