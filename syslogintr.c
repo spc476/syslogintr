@@ -1293,7 +1293,9 @@ int syslogintr_alarm(lua_State *L)
       default:  break;
     }
   }
-  
+  else
+    return luaL_error(L,"expected number or string");
+
   syslog(LOG_DEBUG,"Alarm PID: %lu",(unsigned long)getpid());
   syslog(LOG_DEBUG,"Alarm set for %d seconds\n",g_alarm);
   
