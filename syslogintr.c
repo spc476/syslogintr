@@ -403,7 +403,6 @@ int main(int argc,char *argv[])
       
       snprintf(luascript,FILENAME_MAX,"%s/%s",path,argv[optind]);
       g_luacode = luascript;
-      fprintf(stderr,"%s\n",g_luacode);
     }
   }
 
