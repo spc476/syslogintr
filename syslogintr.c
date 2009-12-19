@@ -104,6 +104,7 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -435,8 +436,6 @@ int main(int argc,char *argv[])
     {
       mf_sigalarm = 0;
       call_optional_luaf("alarm_handler");
-      syslog(LOG_DEBUG,"Rearmed alarm");
-      alarm(g_alarm);
     }
 
     events = epoll_wait(g_queue,list,MAX_EVENTS,-1);
@@ -1154,7 +1153,8 @@ Status set_signal_handler(int sig,void (*handler)(int))
 
 int syslogintr_alarm(lua_State *L)
 {
-  int pcount;
+  struct itimerval set;
+  int              pcount;
   
   assert(L != NULL);
   
@@ -1184,7 +1184,13 @@ int syslogintr_alarm(lua_State *L)
   
   syslog(LOG_DEBUG,"Alarm PID: %lu",(unsigned long)getpid());
   syslog(LOG_DEBUG,"Alarm set for %d seconds\n",g_alarm);
-  alarm(g_alarm);
+  
+  set.it_value.tv_sec  = set.it_interval.tv_sec  = g_alarm;
+  set.it_value.tv_usec = set.it_interval.tv_usec = 0;
+  
+  if (setitimer(ITIMER_REAL,&set,NULL) == -1)
+    syslog(LOG_WARNING,"setitimer() = %s",strerror(errno));
+  
   lua_pop(L,1);
   return 0;
 }
