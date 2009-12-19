@@ -312,6 +312,7 @@ volatile sig_atomic_t mf_sigalarm;
 
 int main(int argc,char *argv[])
 {
+  char    luascript[FILENAME_MAX];
   Status  status;
   FILE   *fppid;
   
@@ -376,8 +377,36 @@ int main(int argc,char *argv[])
   lua_pop(g_L,1);
   
   if (optind < argc)
-    g_luacode = argv[optind];
-  
+  {
+    if (argv[optind][0] == '/')
+      g_luacode = argv[optind];
+    else
+    {
+      /*---------------------------------------------------------
+      ; this bit is here to turn a relative path into a full
+      ; path based upon our current path.  We do this because
+      ; we change to the root dirctory when going into daemon
+      ; mode.  This way, we won't hang a possible unmount command
+      ; because we're in some mounted directory---check comments
+      ; in daemon_init() for more details.
+      ;----------------------------------------------------------*/
+      
+      char  cwd[FILENAME_MAX];
+      char *path;
+      
+      path = getcwd(cwd,FILENAME_MAX);
+      if (path == NULL)
+      {
+        perror("getcwd()");
+        return EXIT_FAILURE;
+      }
+      
+      snprintf(luascript,FILENAME_MAX,"%s/%s",path,argv[optind]);
+      g_luacode = luascript;
+      fprintf(stderr,"%s\n",g_luacode);
+    }
+  }
+
   lua_pushstring(g_L,g_luacode);
   lua_setglobal(g_L,"scriptpath");
   lua_pushstring(g_L,basename(g_luacode)); /* GNU basename() no mod. params */
@@ -1051,14 +1080,78 @@ Status daemon_init(void)
 {
   pid_t pid;
   
+  /*-----------------------------------------------------------------------
+  ; From the Unix Programming FAQ (corraborated by Stevens):
+  ;
+  ; 1. 'fork()' so the parent can exit, this returns control to the command
+  ;    line or shell invoking your program.  This step is required so that
+  ;    the new process is guaranteed not to be a process group leader. The
+  ;    next step, 'setsid()', fails if you're a process group leader.
+  ;---------------------------------------------------------------------*/
+             
   pid = fork();
   if (pid == (pid_t)-1)
     return retstatus(false,errno,"fork()");
   else if (pid != 0)	/* parent goes bye bye */
     _exit(EXIT_SUCCESS);
   
+  /*-------------------------------------------------------------------------
+  ; 2. 'setsid()' to become a process group and session group leader. Since
+  ;    a controlling terminal is associated with a session, and this new
+  ;    session has not yet acquired a controlling terminal our process now
+  ;    has no controlling terminal, which is a Good Thing for daemons.
+  ;
+  ;    _Advanced Programming in the Unix Environment_, 2nd Edition, also
+  ;    ignores SIGHUP.  So adding that here as well.
+  ;-----------------------------------------------------------------------*/
+
   setsid();
-  syslog(LOG_DEBUG,"gone into daemon mode");
+  set_signal_handler(SIGHUP,SIG_IGN);	/* ignore this signal for now */
+
+  /*-------------------------------------------------------------------------
+  ; 3. 'fork()' again so the parent, (the session group leader), can exit. 
+  ;    This means that we, as a non-session group leader, can never regain a
+  ;    controlling terminal.
+  ;------------------------------------------------------------------------*/
+
+  pid = fork();
+  if (pid == (pid_t)-1)
+    return retstatus(false,errno,"fork(2)");
+  else if (pid != 0)	/* parent goes bye bye */
+    _exit(EXIT_SUCCESS);
+  
+  /*-------------------------------------------------------------------------
+  ; 4. 'chdir("/")' to ensure that our process doesn't keep any directory in
+  ;    use. Failure to do this could make it so that an administrator
+  ;    couldn't unmount a filesystem, because it was our current directory.
+  ;
+  ;    [Equivalently, we could change to any directory containing files
+  ;    important to the daemon's operation.] 
+  ;
+  ;    I just made sure the name of the script we are using contains the
+  ;    full path.
+  ;-------------------------------------------------------------------------*/
+            
+  chdir("/");
+  
+  /*-----------------------------------------------------------------------
+  ; 5. 'umask(0)' so that we have complete control over the permissions of
+  ;    anything we write. We don't know what umask we may have inherited.
+  ;-----------------------------------------------------------------------*/
+
+  umask(0);       
+  
+  /*-----------------------------------------------------------------------
+  ; 6. 'close()' fds 0, 1, and 2. This releases the standard in, out, and
+  ;    error we inherited from our parent process. We have no way of knowing
+  ;    where these fds might have been redirected to. Note that many daemons
+  ;    use 'sysconf()' to determine the limit '_SC_OPEN_MAX'. 
+  ;    '_SC_OPEN_MAX' tells you the maximun open files/process. Then in a
+  ;    loop, the daemon can close all possible file descriptors. You have to
+  ;    decide if you need to do this or not.  If you think that there might
+  ;    be file-descriptors open you should close them, since there's a limit
+  ;    on number of concurrent file descriptors.
+  ;------------------------------------------------------------------------*/    
   
   lua_getglobal(g_L,"io");
   
@@ -1074,10 +1167,29 @@ Status daemon_init(void)
   lua_getfield(g_L,-2,"stderr");
   lua_call(g_L,1,0);
     
+  /*------------------------------------------------------------
+  ; these can fail safely as they may have been closed via Lua
+  ; but just to make sure ...
+  ;-----------------------------------------------------------*/
+  
+  fclose(stderr);
+  fclose(stdout);
+  fclose(stdin);
+  
   close(STDERR_FILENO);
   close(STDOUT_FILENO);
   close(STDIN_FILENO);
-    
+
+  /*------------------------------------------------------------------------
+  ; 7. Establish new open descriptors for stdin, stdout and stderr. Even if
+  ;    you don't plan to use them, it is still a good idea to have them
+  ;    open.  The precise handling of these is a matter of taste; if you
+  ;    have a logfile, for example, you might wish to open it as stdout or
+  ;    stderr, and open '/dev/null' as stdin; alternatively, you could open
+  ;    '/dev/console' as stderr and/or stdout, and '/dev/null' as stdin, or
+  ;    any other combination that makes sense for your particular daemon.
+  ;------------------------------------------------------------------------*/
+
   lua_getfield(g_L,-1,"open");
   lua_pushstring(g_L,"/dev/null");
   lua_pushstring(g_L,"r");
@@ -1097,7 +1209,7 @@ Status daemon_init(void)
   lua_setfield(g_L,-2,"stderr");
     
   lua_pop(g_L,lua_gettop(g_L));
-  syslog(LOG_DEBUG,"reopened io.stdin, io.stdout and io.stderr");
+  syslog(LOG_DEBUG,"daemon mode---reopened io.stdin, io.stdout and io.stderr");
   return c_okay;
 }
 
