@@ -53,7 +53,7 @@ function alarm_handler()
 
   local now = os.time()
 
-  I_log("debug","About to remove blocks")  
+  I_log("debug",string.format("About to remove blocks (%d left)",#blocked))
 
   while #blocked > 0 do
     if now - blocked[1].when < 3600 then return end
@@ -148,3 +148,4 @@ end
 -- ******************************************************
 
 I_log("debug","reloaded " .. script)
+I_log("debug",string.format("IPs currently blocked: %d",#blocked))
