@@ -31,10 +31,12 @@
 -- *	logtimestamp	as from os.time() [1]
 -- *	pid		integer (0 if not available) [2]
 -- *	program		string  ("" if not available) [3]
+-- *    program_extra   string  ("" if not available) [3][7]
 -- *	msg		string
 -- *	remote		boolean (true if from network socket)
 -- *	host		string [4]
--- *	port		integer (-1 if not available [5])
+-- *    relay           string  ("" if not available) [6]
+-- *	port		integer (-1 if not available) [5]
 -- *
 -- *	[1]	if the incoming syslog request has a timestamp, this
 -- *		will contain it, otherwise it's equal to the timestamp
@@ -49,6 +51,20 @@
 -- *		this will be the filename of the localsocket.
 -- *
 -- *	[5]	Remote port of the request, or -1 if from a localsocket.
+-- *
+-- * 	[6]	The message is being relayed from an original source.  If
+-- *		that is the case, then host will be set to the original
+-- *		source, and relay will be set to the device that sent us the
+-- *		message.  If the device was the original sender, then relay
+-- *		will be "".
+-- *
+-- * 	[7]	Most likely version information that shouldn't be part of
+-- *		the program name.
+-- *
+-- * Two variables are also defined:
+-- *
+-- *	1. scriptpath	- full path of the script
+-- *	2. script	- just the script name
 -- *
 -- ****************************************************************
 
@@ -102,7 +118,7 @@ end
 function alarm_handler()
   log{
   	host      = "(internal)",
-  	program	  = "minsys",
+  	program	  = script,	-- "script" contains the script name
   	facility  = "syslog",
   	level     = "debug",
   	timestamp = os.time(),

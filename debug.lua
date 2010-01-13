@@ -32,19 +32,20 @@
 function log(msg)
   io.stdout:write(string.format("Request:\n"))
   io.stdout:write(string.format([[
-	version      = %d
-	_RAW         = %s
-	host         = %s
-	relay        = %s
-	port         = %d
-	remote       = %s
-	timestamp    = %s
-	logtimestamp = %s
-	program      = %s
-	pid          = %d
-	facility     = %s
-	level        = %s
-	msg          = %s
+	version       = %d
+	_RAW          = %s
+	host          = %s
+	relay         = %s
+	port          = %d
+	remote        = %s
+	timestamp     = %s
+	logtimestamp  = %s
+	program       = %s
+	program_extra = %s
+	pid           = %d
+	facility      = %s
+	level         = %s
+	msg           = %s
 
 ]],
 	msg.version,
@@ -56,6 +57,7 @@ function log(msg)
 	os.date("%c",msg.timestamp),
 	os.date("%c",msg.logtimestamp),
 	msg.program,
+	msg.program_extra,
 	msg.pid,
 	msg.facility,
 	msg.level,
