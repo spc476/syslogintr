@@ -35,6 +35,7 @@
 *	logtimestamp	as from os.time() [1]
 *	pid		integer (0 if not available)  [2]
 *	program		string  ("" if not available) [3]
+*	program_extra	string  ("" if not avaialble) [3][7]
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
@@ -82,6 +83,8 @@
 *	relay will be set to the device that sent us the message.  If
 *	the device was the original sender, then relay will be "".
 *
+* [7]	Most likely version information that shouldn't be part of the 
+*	program name.
 ************************************************************************/
 
 #define _GNU_SOURCE
@@ -176,19 +179,20 @@ struct sysstring
 
 struct msg
 {
-  int              version;	/* syslog version---RFC3164=0		*/
-  struct sysstring raw;		/* raw message (debugging purposes)	*/
-  struct sysstring host;	/* address of original sending host 	*/
-  struct sysstring relay;	/* address of host that sent msg 	*/
-  int              port;	/* UDP port of sending host		*/
-  bool             remote;	/* true if syslog from remote		*/
-  time_t           timestamp;	/* timestamp of received syslog 	*/
-  time_t           logtimestamp; /* original timestamp 			*/
-  struct sysstring program;	/* program that generated syslog	*/
-  int              pid;  	/* process id of said program		*/
+  int              version;		/* syslog version---RFC3164=0	 */
+  struct sysstring raw;			/* raw message (debugging purposes) */
+  struct sysstring host;		/* address of original sending host */
+  struct sysstring relay;		/* address of host that sent msg */
+  int              port;		/* UDP port of sending host	 */
+  bool             remote;		/* true if syslog from remote	 */
+  time_t           timestamp;		/* timestamp of received syslog  */
+  time_t           logtimestamp;	/* original timestamp 		 */
+  struct sysstring program;		/* program that generated syslog */
+  struct sysstring program_extra;	/* additional program info	 */
+  int              pid;			/* process id of said program	 */
   int              facility;	
   int              level;
-  struct sysstring msg;		/* syslog message			*/
+  struct sysstring msg;			/* syslog message		 */
 };
 
 /******************************************************************/
@@ -616,14 +620,15 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   now = time(NULL);
   localtime_r(&now,&dateread);
   
-  msg.version      = 0;
-  msg.raw.size     = strlen(buffer);
-  msg.raw.text     = raw;
-  msg.timestamp    = now;
-  msg.logtimestamp = now;
-  msg.program      = c_null;
-  msg.relay        = c_null;
-  msg.pid          = 0;
+  msg.version       = 0;
+  msg.raw.size      = strlen(buffer);
+  msg.raw.text      = raw;
+  msg.timestamp     = now;
+  msg.logtimestamp  = now;
+  msg.program       = c_null;
+  msg.program_extra = c_null;
+  msg.relay         = c_null;
+  msg.pid           = 0;
   
   if (pss->ss.sa_family == AF_INET)
   {
@@ -750,7 +755,7 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     {
       size_t        len = (size_t)(q - p);
       char          addr [BUFSIZ];
-      unsigned char addr6[(128 / CHAR_BIT) + 1];
+      unsigned char addr6[INET6_ADDRSTRLEN];
       int           rc;
     
       memcpy(addr,p,len);
@@ -766,55 +771,94 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
       }
     }
 
-    /*------------------------------------------------
-    ; this bit will catch IPv4 addresses/hostnames and
-    ; the program/pid part.
-    ;------------------------------------------------*/
+    /*-----------------------------------------------------------------------
+    ; this bit will catch IPv4 addresses/hostnames and the program/pid part. 
+    ;----------------------------------------------------------------------*/
   
     q = strchr(p,':');
     if (q)
     {
-      char *b;
+      size_t         len;
+      char           addr[BUFSIZ];
+      unsigned char  addr4[INET_ADDRSTRLEN];
+      int            rc;
+      char          *b;
+      char          *pid;
       
-      /*------------------------------------------------------
-      ; Complication 4: when starting up, the default syslogd
-      ; that comes with Linux systems these days send a message
-      ; in the format of 
+      /*----------------------------------------------------------
+      ; Complication 4: some programs when run locally, send a message
+      ; in the format of:
       ;
-      ;		<N>syslogd x.y.z: blahblahbalbh
+      ;		<N>program blahblah: yada yada yada
       ;
-      ; which, according to the spec, interpreted as a host
-      ; syslog with a program of x.y.z sending the message.
+      ; which according to the spec, is interpreted as a host "program"
+      ; followed by a program "blahblah" when that isn't the case.  So, what
+      ; we do here is attempt to parse the host as an IPv4 address and if
+      ; so, set the host field to that, otherwise, it's treated as a program
+      ; name.
       ;
-      ; This handles that case.
-      ;-------------------------------------------------------*/
+      ; We also can't assume that if the request is remote, that it will
+      ; have the host as part of the message (syslogd, I'm looking at you!)
+      ;---------------------------------------------------------------*/
+
+      b = memchr(p,' ',(size_t)(q - p));
+      if (b == NULL) b = q;
       
-      if (strncmp(p,"syslogd",7) == 0)
+      len = (size_t)(b - p);
+      memcpy(addr,p,len);
+      addr[len] = '\0';
+      
+      rc = inet_pton(AF_INET,addr,&addr4);
+      if (rc == 1)	/* valid IPv4 address */
       {
-        msg.program.text = p;
-        msg.program.size = (size_t)(q - p);
+        assert(b != NULL);
+        msg.relay = msg.host;
+        msg.host.text = p;
+        msg.host.size = (size_t)(b - p);
+        p = b + 1;        
+      }
+      
+      /*-------------------------------------------------------------------
+      ; Complication #5: some programs don't follow even the very lose Unix
+      ; spec very closely (syslogd, gconfd, I'm looking at you!) so we handle
+      ; these as some special cases.  Sigh.
+      ;--------------------------------------------------------------------*/
+      
+      if ((strncmp(p,"syslogd",7) == 0) || (strncmp(p,"gconfd",6) == 0))
+      {
+        assert((*b == ' ') || (*b == ':'));	/* it should be set from above */
+        
+        if (*b == ' ')
+        {
+          msg.program_extra.text = b + 1;
+          msg.program_extra.size = (q - (b + 1));
+        }
       }
       else
       {
-        b = memchr(p,' ',(size_t)(q - p));
-        if (b != NULL)
-        {
-          msg.relay     = msg.host;
-          msg.host.text = p;
-          msg.host.size = (size_t)(b - p);
-          p = b + 1;
-        }
-    
+        /*---------------------------------------------------------------
+        ; by now, p should be pointing to the program and q to the ':' that
+        ; marks the end of this portion of the syslog message.
+        ;--------------------------------------------------------------*/
+      
         b = memchr(p,'[',(size_t)(q - p));
         if (b)
           msg.pid = strtoul(b + 1,NULL,10);
         else
           b = q;
-      
-        msg.program.text = p;
-        msg.program.size = (size_t)(b - p);
       }
-      
+ 
+      /*------------------------------------------------------------
+      ; assumptions (that really can't be tested) at this point:
+      ;
+      ; p	points to program name start
+      ; b	points to just past program name
+      ; q	points past this field to the actual message part
+      ;------------------------------------------------------------*/
+
+      msg.program.text = p;
+      msg.program.size = (size_t)(b - p);
+
       for (p = q + 1 ; *p && isspace(*p) ; p++)
         ;      
     }
@@ -856,6 +900,7 @@ void process_msg(const struct msg *const pmsg)
   clean_string(pmsg->host);
   clean_string(pmsg->relay);
   clean_string(pmsg->program);
+  clean_string(pmsg->program_extra);
   clean_string(pmsg->msg);
 #endif
 
@@ -896,6 +941,10 @@ void process_msg(const struct msg *const pmsg)
   
   lua_pushliteral(g_L,"program");
   lua_pushlstring(g_L,pmsg->program.text,pmsg->program.size);
+  lua_settable(g_L,-3);
+  
+  lua_pushliteral(g_L,"program_extra");
+  lua_pushlstring(g_L,pmsg->program_extra.text,pmsg->program_extra.size);
   lua_settable(g_L,-3);
   
   lua_pushliteral(g_L,"pid");
