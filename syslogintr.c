@@ -24,9 +24,9 @@
 *
 * SyslogInterpreter - a syslog replacement.
 *
-* This binds to the various syslog sockets, collects syslog requests,
-* and then passes them on to a Lua function for handling.  The C code
-* will construct a Lua table with the following fields:
+* This binds to the various syslog sockets, collects syslog requests, and
+* then passes them on to a Lua function for handling.  The C code will
+* construct a Lua table with the following fields:
 *
 *	version		integer = 0
 *	facility	string
@@ -53,13 +53,13 @@
 * called reload_signal() and call that.  reload_signal() has no parameters,
 * and returns no parameters.
 *
-* You can also schedule a function to run periodically with the Lua 
-* function alarm(n).  The pameter is either a number, which is the number 
-* of seconds between invocations of the supplied alarm_handler() function,
-* or a string, which has a format of "<number>s" (for number of seconds), 
-* "<number>m" (for number of minutes), "<number>h" (for number of hours)
-* or "<number>d" (for number of days).  The functino alarm_handler()
-* takes no parameters, nor returns any paramters.
+* You can also schedule a function to run periodically with the Lua function
+* alarm(n).  The parameter is either a number, which is the number of
+* seconds between invocations of the supplied alarm_handler() function, or a
+* string, which has a format of "<number>s" (for number of seconds),
+* "<number>m" (for number of minutes), "<number>h" (for number of hours) or
+* "<number>d" (for number of days).  The functino alarm_handler() takes no
+* parameters, nor returns any paramters.
 *
 * There are also two Lua variables defined:
 *
@@ -184,20 +184,20 @@ struct sysstring
 
 struct msg
 {
-  int              version;		/* syslog version---RFC3164=0	 */
-  struct sysstring raw;			/* raw message (debugging purposes) */
-  struct sysstring host;		/* address of original sending host */
-  struct sysstring relay;		/* address of host that sent msg */
-  int              port;		/* UDP port of sending host	 */
-  bool             remote;		/* true if syslog from remote	 */
-  time_t           timestamp;		/* timestamp of received syslog  */
-  time_t           logtimestamp;	/* original timestamp 		 */
-  struct sysstring program;		/* program that generated syslog */
-  struct sysstring program_extra;	/* additional program info	 */
-  int              pid;			/* process id of said program	 */
+  int              version;	  /* syslog version---RFC3164=0		*/
+  struct sysstring raw;		  /* raw message (debugging purposes)	*/
+  struct sysstring host;	  /* address of original sending host	*/
+  struct sysstring relay;	  /* address of host that sent msg	*/
+  int              port;	  /* UDP port of sending host		*/
+  bool             remote;	  /* true if syslog from remote		*/
+  time_t           timestamp;	  /* timestamp of received syslog	*/
+  time_t           logtimestamp;  /* original timestamp 		*/
+  struct sysstring program;	  /* program that generated syslog	*/
+  struct sysstring program_extra; /* additional program info		*/
+  int              pid;		  /* process id of said program		*/
   int              facility;	
   int              level;
-  struct sysstring msg;			/* syslog message		 */
+  struct sysstring msg;		  /* syslog message			*/
 };
 
 /******************************************************************/
@@ -665,8 +665,8 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   /*----------------------------------------------------------------------
   ; the use of explicit values for LOG_USER and LOG_NOTICE here is because
   ; the values defined are *not* the *direct* values---LOG_USER (in fact,
-  ; all the defined facilities) are biased by a multiplier (8).  Thus, the
-  ; direct, non-#define'ed values used here.
+  ; all the defined facilities) are biased by a multiplier (8---at least on
+  ; my system).  Thus, the direct, non-#define'ed values used here.
   ;
   ; Also, if there's any problem parsing the front end of the message, we
   ; log the raw message we received using "user.notice".
