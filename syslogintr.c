@@ -662,6 +662,16 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     msg.port      = -1;
   }
   
+  /*----------------------------------------------------------------------
+  ; the use of explicit values for LOG_USER and LOG_NOTICE here is because
+  ; the values defined are *not* the *direct* values---LOG_USER (in fact,
+  ; all the defined facilities) are biased by a multiplier (8).  Thus, the
+  ; direct, non-#define'ed values used here.
+  ;
+  ; Also, if there's any problem parsing the front end of the message, we
+  ; log the raw message we received using "user.notice".
+  ;---------------------------------------------------------------------*/
+  
   if (buffer[0] != '<')
   {
     msg.facility = 1;	/* LOG_USER */
