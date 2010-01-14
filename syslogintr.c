@@ -129,6 +129,7 @@
 #define MAX_FACILITY	24
 #define MAX_LEVEL	 8
 #define MAX_EVENTS	60
+#define MAX_MSGLEN	1024
 
 #define LOG_PORT	514
 #define LOG_LOCAL	"/dev/log"
@@ -608,7 +609,7 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
 {
   struct msg msg;
   char       host[BUFSIZ];
-  char       raw [1025];
+  char       raw [MAX_MSGLEN + 1];
   struct tm  dateread;
   time_t     now;
   div_t      faclev;
@@ -621,7 +622,7 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   assert(buffer != NULL);
   
   memset(raw,0,sizeof(raw));
-  memcpy(raw,buffer,1024);
+  memcpy(raw,buffer,MAX_MSGLEN);
   
   now = time(NULL);
   localtime_r(&now,&dateread);
@@ -1523,9 +1524,9 @@ int syslogintr_relay(lua_State *L)
   size = snprintf(p,max,": %s",msg.msg.text);
   size = (size_t)((p + size) - output);
 
-  if (size > 1024)
+  if (size > MAX_MSGLEN)
   {
-    size = 1024;
+    size = MAX_MSGLEN;
     output[size] = '\0';
   }
   
