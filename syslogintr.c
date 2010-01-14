@@ -61,6 +61,11 @@
 * or "<number>d" (for number of days).  The functino alarm_handler()
 * takes no parameters, nor returns any paramters.
 *
+* There are also two Lua variables defined:
+*
+*	scriptpath	- the full path to the script being run
+*	script		- the basename of the script being run
+*
 * To compile:
 *
 * 	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -ldl -lm -llua
@@ -436,6 +441,7 @@ int main(int argc,char *argv[])
   set_signal_handler(SIGUSR1,handle_signal);
   set_signal_handler(SIGHUP ,handle_signal);
   set_signal_handler(SIGALRM,handle_signal);
+  
   load_script();
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
