@@ -581,7 +581,7 @@ void event_read(struct epoll_event *ev)
   sockaddr_all remote;           
   socklen_t    remsize;
   ssize_t      bytes;
-  char         buffer[65536uL];
+  char         buffer[65536uL]; /* 65507 max size of UDP packet */
   
   assert(ev != NULL);
   
@@ -597,6 +597,7 @@ void event_read(struct epoll_event *ev)
     return;
   }
   
+  assert(bytes < sizeof(buffer));
   buffer[bytes] = '\0';
   
   for (size_t i = 0 ; buffer[i] != '\0'; i++)
