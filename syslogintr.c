@@ -597,7 +597,9 @@ void event_read(struct epoll_event *ev)
     return;
   }
   
-  assert(bytes < sizeof(buffer));
+  assert(bytes         >= 0);
+  assert((size_t)bytes < sizeof(buffer));
+  
   buffer[bytes] = '\0';
   
   for (size_t i = 0 ; buffer[i] != '\0'; i++)
