@@ -35,7 +35,7 @@
 *	logtimestamp	as from os.time() [1]
 *	pid		integer (0 if not available)  [2]
 *	program		string  ("" if not available) [3]
-*	program_extra	string  ("" if not avaialble) [3][7]
+*	program_extra	string  ("" if not avaialble) [3][7][8]
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
@@ -90,6 +90,9 @@
 *
 * [7]	Most likely version information that shouldn't be part of the 
 *	program name.
+*
+* [8]	Not actually used in this version---was used in a previous
+*	version and I may again use it---don't know as of yet.
 ************************************************************************/
 
 #define _GNU_SOURCE
@@ -710,177 +713,92 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
     msg.logtimestamp = mktime(&dateread);
     if (*q != ' ')
     {
-      msg.facility = 1;	/* LOG_USER */
-      msg.level    = 5; /*LOG_NOTICE */
+      msg.facility = 1; /* LOG_USER */
+      msg.level    = 5; /* LOG_NOTICE */
       msg.msg      = msg.raw;
+
       process_msg(&msg);
       return;
     }
     p = q + 1;
   }
   
-  /*----------------------------------------------------------------------
-  ; check for origin/program name/pid fields (technically, the PID field
-  ; isn't part of RFC3164, and is technically part of the CONTENT portion of
-  ; the message, but hey, a lot of Unix programs set it.  So it makes sense.
-  ;------------------------------------------------------------------------*/
+  /*------------------------------------------------------------------------
+  ; check for origin field.  We only look for IPv4/IPv6 literal addresses as
+  ; that's the only reliable way to actually transmit such information (and
+  ; parse it as intended per RFC3164).  Thus, this code will fail if a
+  ; hostname is sent, but it would also fail if the program name with an
+  ; embedded space but no host is sent.
+  ; 
+  ; I suppose I could check to see if the first white-space delimited field
+  ; *only* contains alphanumberics, but then it could fail on a message that
+  ; is sent that contains neither a host nor a program (which is possible).
+  ;
+  ; Pick your poison ... this works for me 
+  ;-------------------------------------------------------------------------*/
   
-  if (*p == '/')
+  q = strchr(p,' ');
+  
+  if (q)
   {
-    /*-----------------------------------------------------------------
-    ; Complication 1:  Mac OS-X sends out program names embedded with
-    ; spaces, but since this form typically starts with a '/', we can look
-    ; for it and handle it accordingly.
-    ;------------------------------------------------------------------*/
+    size_t        len = (size_t)(q - p);
+    char          addr[len + 1];
+    unsigned char addrip[16];	/* big enough */
+    int           rc;
     
-    q = strchr(p,':');
-    if (q)
+    memcpy(addr,p,len);
+    addr[len] = '\0';
+    
+    rc = inet_pton(AF_INET6,addr,&addrip);
+    if (rc == 1)	/* valid IPv6 address */
     {
-      char *b;
-      
-      /*---------------------------------------------------------------
-      ; Complication 3:  Some Linux distributions embed leading '/' with the
-      ; program name *and* include the PID, we we might as well handle that
-      ; here.  Yes, it duplicates code from below, but that will have to
-      ; wait until I get a moment to refactor this code.
-      ;-----------------------------------------------------------------*/
-      
-      b = memchr(p,'[',(size_t)(q - p));
-      if (b)
-        msg.pid = strtoul(b + 1,NULL,10);
-      else
-        b = q;
-      
-      msg.program.text = p;
-      msg.program.size = (size_t)(b - p);
-      
-      for (p = q + 1 ; *p && isspace(*p) ; p++)
-        ;
+      msg.host.text = p;
+      msg.host.size = len;
+      p = q + 1;
     }
-  }
-  else
-  {
-    /*---------------------------------------------------------------------
-    ; Complication 2: since IPv6 addresses can contain embedded ':', check
-    ; for a valid IPv6 address first.  If it is, then set the host to that,
-    ; and the relay to the address we got the packet from, and advance the
-    ; text pointer.  If not, then no harm done here.
-    ;---------------------------------------------------------------------*/
-    
-    q = strchr(p,' ');
-    if (q)
+    else
     {
-      size_t        len = (size_t)(q - p);
-      char          addr [BUFSIZ];
-      unsigned char addr6[INET6_ADDRSTRLEN];
-      int           rc;
-    
-      memcpy(addr,p,len);
-      addr[len] = '\0';
-    
-      rc = inet_pton(AF_INET6,addr,&addr6);
-      if (rc == 1)	/* valid IPv6 address */
+      rc = inet_pton(AF_INET,addr,&addrip);
+      if (rc == 1)	/* valid IPv4 address */
       {
-        msg.relay     = msg.host;
         msg.host.text = p;
-        msg.host.size = (size_t)(q - p);
+        msg.host.size = len;
         p = q + 1;
       }
     }
-
-    /*-----------------------------------------------------------------------
-    ; this bit will catch IPv4 addresses/hostnames and the program/pid part. 
-    ;----------------------------------------------------------------------*/
-  
-    q = strchr(p,':');
-    if (q)
-    {
-      size_t         len;
-      char           addr[BUFSIZ];
-      unsigned char  addr4[INET_ADDRSTRLEN];
-      int            rc;
-      char          *b;
-      char          *pid;
-      
-      /*----------------------------------------------------------
-      ; Complication 4: some programs when run locally, send a message
-      ; in the format of:
-      ;
-      ;		<N>program blahblah: yada yada yada
-      ;
-      ; which according to the spec, is interpreted as a host "program"
-      ; followed by a program "blahblah" when that isn't the case.  So, what
-      ; we do here is attempt to parse the host as an IPv4 address and if
-      ; so, set the host field to that, otherwise, it's treated as a program
-      ; name.
-      ;
-      ; We also can't assume that if the request is remote, that it will
-      ; have the host as part of the message (syslogd, I'm looking at you!)
-      ;---------------------------------------------------------------*/
-
-      b = memchr(p,' ',(size_t)(q - p));
-      if (b == NULL) b = q;
-      
-      len = (size_t)(b - p);
-      memcpy(addr,p,len);
-      addr[len] = '\0';
-      
-      rc = inet_pton(AF_INET,addr,&addr4);
-      if (rc == 1)	/* valid IPv4 address */
-      {
-        assert(b != NULL);
-        msg.relay = msg.host;
-        msg.host.text = p;
-        msg.host.size = (size_t)(b - p);
-        p = b + 1;        
-      }
-      
-      /*-------------------------------------------------------------------
-      ; Complication #5: some programs don't follow even the very lose Unix
-      ; spec very closely (syslogd, gconfd, I'm looking at you!) so we handle
-      ; these as some special cases.  Sigh.
-      ;--------------------------------------------------------------------*/
-      
-      if ((strncmp(p,"syslogd",7) == 0) || (strncmp(p,"gconfd",6) == 0))
-      {
-        assert((*b == ' ') || (*b == ':'));	/* it should be set from above */
-        
-        if (*b == ' ')
-        {
-          msg.program_extra.text = b + 1;
-          msg.program_extra.size = (q - (b + 1));
-        }
-      }
-      else
-      {
-        /*---------------------------------------------------------------
-        ; by now, p should be pointing to the program and q to the ':' that
-        ; marks the end of this portion of the syslog message.
-        ;--------------------------------------------------------------*/
-      
-        b = memchr(p,'[',(size_t)(q - p));
-        if (b)
-          msg.pid = strtoul(b + 1,NULL,10);
-        else
-          b = q;
-      }
- 
-      /*------------------------------------------------------------
-      ; assumptions (that really can't be tested) at this point:
-      ;
-      ; p	points to program name start
-      ; b	points to just past program name
-      ; q	points past this field to the actual message part
-      ;------------------------------------------------------------*/
-
-      msg.program.text = p;
-      msg.program.size = (size_t)(b - p);
-
-      for (p = q + 1 ; *p && isspace(*p) ; p++)
-        ;      
-    }
   }
+
+  /*-----------------------------------------------------------------------
+  ; check for program field.  Quick and dirty check that works so far.
+  ; Basically, we check for the ':' character, which appears to nearly
+  ; always terminate this field.  Then we check for the '[', which mostly
+  ; (but not always) indicates the PID.  This handles every case I've
+  ; encounted so far, with program names with embedded spaces; that and PID
+  ; field, what have you.  It doesn't catch *all* PIDs, as there's a program
+  ; (gconfd, I'm looking at you) that embed the PID in parenthesis along
+  ; with the userid, but hey, if that's *really* important, we can handle it
+  ; here.
+  ;------------------------------------------------------------------------*/
   
+  q = strchr(p,':');
+  
+  if (q)
+  {
+    char *b;
+    
+    b = memchr(p,'[',(size_t)(q - p));
+    if (b)
+      msg.pid = strtoul(b + 1,NULL,10);
+    else
+      b = q;
+    
+    msg.program.text = p;
+    msg.program.size = (size_t)(b - p);
+    
+    for (p = q + 1 ; *p && isspace(*p) ; p++)
+      ;
+  }
+
   /*---------------------------------------------------
   ; whatever remains, however small, is the msg.
   ;---------------------------------------------------*/
