@@ -35,7 +35,6 @@
 *	logtimestamp	as from os.time() [1]
 *	pid		integer (0 if not available)  [2]
 *	program		string  ("" if not available) [3]
-*	program_extra	string  ("" if not avaialble) [3][7][8]
 *	msg		actual string
 *	remote		boolean
 *	host		string [4]
@@ -87,12 +86,6 @@
 *	is the case, then host will be set to the original source, and
 *	relay will be set to the device that sent us the message.  If
 *	the device was the original sender, then relay will be "".
-*
-* [7]	Most likely version information that shouldn't be part of the 
-*	program name.
-*
-* [8]	Not actually used in this version---was used in a previous
-*	version and I may again use it---don't know as of yet.
 ************************************************************************/
 
 #define _GNU_SOURCE
@@ -197,7 +190,6 @@ struct msg
   time_t           timestamp;	  /* timestamp of received syslog	*/
   time_t           logtimestamp;  /* original timestamp 		*/
   struct sysstring program;	  /* program that generated syslog	*/
-  struct sysstring program_extra; /* additional program info		*/
   int              pid;		  /* process id of said program		*/
   int              facility;	
   int              level;
@@ -637,7 +629,6 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
   msg.timestamp     = now;
   msg.logtimestamp  = now;
   msg.program       = c_null;
-  msg.program_extra = c_null;
   msg.relay         = c_null;
   msg.pid           = 0;
   
@@ -838,7 +829,6 @@ void process_msg(const struct msg *const pmsg)
   clean_string(pmsg->host);
   clean_string(pmsg->relay);
   clean_string(pmsg->program);
-  clean_string(pmsg->program_extra);
   clean_string(pmsg->msg);
 #endif
 
@@ -879,10 +869,6 @@ void process_msg(const struct msg *const pmsg)
   
   lua_pushliteral(g_L,"program");
   lua_pushlstring(g_L,pmsg->program.text,pmsg->program.size);
-  lua_settable(g_L,-3);
-  
-  lua_pushliteral(g_L,"program_extra");
-  lua_pushlstring(g_L,pmsg->program_extra.text,pmsg->program_extra.size);
   lua_settable(g_L,-3);
   
   lua_pushliteral(g_L,"pid");

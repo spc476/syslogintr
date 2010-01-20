@@ -31,7 +31,6 @@
 -- *	logtimestamp	as from os.time() [1]
 -- *	pid		integer (0 if not available) [2]
 -- *	program		string  ("" if not available) [3]
--- *    program_extra   string  ("" if not available) [3][7]
 -- *	msg		string
 -- *	remote		boolean (true if from network socket)
 -- *	host		string [4]
@@ -57,9 +56,6 @@
 -- *		source, and relay will be set to the device that sent us the
 -- *		message.  If the device was the original sender, then relay
 -- *		will be "".
--- *
--- * 	[7]	Most likely version information that shouldn't be part of
--- *		the program name.
 -- *
 -- * Two variables are also defined:
 -- *

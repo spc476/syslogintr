@@ -41,7 +41,6 @@ function log(msg)
 	timestamp     = %s
 	logtimestamp  = %s
 	program       = %s
-	program_extra = %s
 	pid           = %d
 	facility      = %s
 	level         = %s
@@ -57,7 +56,6 @@ function log(msg)
 	os.date("%c",msg.timestamp),
 	os.date("%c",msg.logtimestamp),
 	msg.program,
-	msg.program_extra,
 	msg.pid,
 	msg.facility,
 	msg.level,
