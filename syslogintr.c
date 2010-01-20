@@ -211,7 +211,7 @@ Status		ipv6_socket		(void);
 Status		local_socket		(void);
 Status		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
-void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,size_t);
+void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
 void		process_msg		(const struct msg *const);
 Status		parse_options		(int,char *[]);
 void		usage			(const char *);
@@ -605,13 +605,13 @@ void event_read(struct epoll_event *ev)
   for (size_t i = 0 ; buffer[i] != '\0'; i++)
     if (iscntrl(buffer[i]))
       buffer[i] = ' ';
-      
-  syslog_interp(&node->local,&remote,buffer,bytes);
+  
+  syslog_interp(&node->local,&remote,buffer,&buffer[bytes]);
 }
 
 /*********************************************************************/
 
-void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_t bufsiz)
+void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const char *end)
 {
   struct msg msg;
   char       host[BUFSIZ];
@@ -625,12 +625,14 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_
   assert(ploc   != NULL);
   assert(pss    != NULL);
   assert(buffer != NULL);
+  assert(end    != NULL);
+  assert(buffer <= end);
   
   now = time(NULL);
   localtime_r(&now,&dateread);
   
   msg.version       = 0;
-  msg.raw.size      = bufsiz;
+  msg.raw.size      = (size_t)(end - buffer);
   msg.raw.text      = buffer;
   msg.timestamp     = now;
   msg.logtimestamp  = now;
@@ -697,9 +699,9 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_
   }
   
   faclev = div(value,8);
-  
-  msg.facility = faclev.quot;
-  msg.level    = faclev.rem;
+
+  msg.facility  = faclev.quot;
+  msg.level     = faclev.rem;
   
   /*---------------------------------------------
   ; check for a supplied timestamp.
@@ -735,8 +737,9 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_
   ;
   ; Pick your poison ... this works for me 
   ;-------------------------------------------------------------------------*/
-  
-  q = strchr(p,' ');
+
+  assert(p <= end);
+  q = memchr(p,' ',(size_t)(end - p));
   
   if (q)
   {
@@ -779,7 +782,8 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_
   ; here.
   ;------------------------------------------------------------------------*/
   
-  q = strchr(p,':');
+  assert(p <= end);
+  q = memchr(p,':',(size_t)(end - p));
   
   if (q)
   {
@@ -790,12 +794,12 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_
       msg.pid = strtoul(b + 1,NULL,10);
     else
       b = q;
-    
+      
     msg.program.text = p;
     msg.program.size = (size_t)(b - p);
     
     for (p = q + 1 ; *p && isspace(*p) ; p++)
-      ;
+      ;    
   }
 
   /*---------------------------------------------------
@@ -803,7 +807,7 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_
   ;---------------------------------------------------*/
   
   msg.msg.text = p;
-  msg.msg.size = strlen(p);
+  msg.msg.size = (size_t)(end - p);
   
   process_msg(&msg);
 }
