@@ -211,7 +211,7 @@ Status		ipv6_socket		(void);
 Status		local_socket		(void);
 Status		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
-void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *);
+void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,size_t);
 void		process_msg		(const struct msg *const);
 Status		parse_options		(int,char *[]);
 void		usage			(const char *);
@@ -603,16 +603,15 @@ void event_read(struct epoll_event *ev)
     if (iscntrl(buffer[i]))
       buffer[i] = ' ';
       
-  syslog_interp(&node->local,&remote,buffer);
+  syslog_interp(&node->local,&remote,buffer,bytes);
 }
 
 /*********************************************************************/
 
-void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
+void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,size_t bufsiz)
 {
   struct msg msg;
   char       host[BUFSIZ];
-  char       raw [MAX_MSGLEN + 1];
   struct tm  dateread;
   time_t     now;
   div_t      faclev;
@@ -624,15 +623,12 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer)
   assert(pss    != NULL);
   assert(buffer != NULL);
   
-  memset(raw,0,sizeof(raw));
-  memcpy(raw,buffer,MAX_MSGLEN);
-  
   now = time(NULL);
   localtime_r(&now,&dateread);
   
   msg.version       = 0;
-  msg.raw.size      = strlen(buffer);
-  msg.raw.text      = raw;
+  msg.raw.size      = bufsiz;
+  msg.raw.text      = buffer;
   msg.timestamp     = now;
   msg.logtimestamp  = now;
   msg.program       = c_null;
