@@ -581,7 +581,7 @@ void event_read(struct epoll_event *ev)
   sockaddr_all remote;           
   socklen_t    remsize;
   ssize_t      bytes;
-  char         buffer[BUFSIZ];
+  char         buffer[65536uL];
   
   assert(ev != NULL);
   
