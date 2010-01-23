@@ -29,10 +29,6 @@ if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
 end
 
-if rawfile == nil then
-  rawfile = io.open("/tmp/raw.log","a") or io.stdout
-end
-
 alarm("60m")
 
 -- *******************************************************
@@ -72,11 +68,6 @@ end
 -- ******************************************************
 
 function log(msg)  
-  if msg._RAW ~= nil then
-    rawfile:write(msg._RAW) 
-    rawfile:write("\n")
-    rawfile:flush()
-  end
   writelog(msg)
   sshd(msg)
 end
