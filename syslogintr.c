@@ -342,21 +342,6 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
 
-  /*--------------------------------------------------------
-  ; Okay, open the PID file (truncating if it already exists),
-  ; then drop our privs (if requested), go into daemon mode
-  ; (if requested), *then* write our PID to the file.  
-  ;-----------------------------------------------------------*/
-
-  fppid = fopen(PID_FILE,"w");
-
-  status = drop_privs();
-  if (!status.okay)
-  {
-    perror(status.msg);
-    return EXIT_FAILURE;
-  }
-
   if (!gf_foreground)
   {
     status = daemon_init();
@@ -368,16 +353,21 @@ int main(int argc,char *argv[])
     }
   }
 
-  if (fppid != NULL)
+  fppid = fopen(PID_FILE,"w");
+  if (fppid)
   {
     fprintf(fppid,"%lu\n",(unsigned long)getpid());
     fclose(fppid);
   }
 
-  /*-----------------------------
-  ; initialize Lua
-  ;-----------------------------*/
-  
+  status = drop_privs();
+  if (!status.okay)
+  {
+    syslog(LOG_ERR,"drop_privs() = %s",status.msg);
+    perror(status.msg);
+    return EXIT_FAILURE;
+  }
+
   g_L = lua_open();
   if (g_L == NULL)
   {
@@ -389,11 +379,6 @@ int main(int argc,char *argv[])
   luaL_openlibs(g_L);
   lua_gc(g_L,LUA_GCRESTART,0);
 
-  /*--------------------------------------
-  ; register script name and path, plus the
-  ; functions we're exporting to Lua
-  ;---------------------------------------*/
-  
   lua_pushstring(g_L,g_luacode);
   lua_setglobal(g_L,"scriptpath");
   lua_pushstring(g_L,basename(g_luacode));
@@ -404,8 +389,8 @@ int main(int argc,char *argv[])
   lua_register(g_L,"relay",syslogintr_relay);
 
   /*--------------------------------------------------
-  ; create a metatable for hostnames, which contains
-  ; the code to convert to a string.
+  ; this metatable exists so we can call tostring() on
+  ; our "host" userdata.
   ;---------------------------------------------------*/
   
   luaL_newmetatable(g_L,LUA_UD_HOST);
