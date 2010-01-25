@@ -136,6 +136,7 @@
 #define LUA_UD_HOST	"SOCKADDR"
 
 #define PID_FILE	"/var/run/syslogd.pid"
+#define DEV_NULL	"/dev/null"
 
 /*****************************************************************/
 
@@ -341,46 +342,7 @@ int main(int argc,char *argv[])
       perror(status.msg);
     return EXIT_FAILURE;
   }
-  
-  /*--------------------------------------------------------
-  ; it's unfortunate, but this is spread out quite a bit 
-  ; throughout the code.  First, we open the PID file, but
-  ; since we may fork(), we don't write to it yet.  Then, in
-  ; drop_privs(), we change the ownership of the file to 
-  ; the user we drop privs to.  Then, after we've possibly
-  ; called fork(), *then* we write the pid.
-  ;---------------------------------------------------------*/
-  
-  fppid = fopen(PID_FILE,"w");
 
-  status = drop_privs();
-  if (!status.okay)
-  {
-    perror(status.msg);
-    return EXIT_FAILURE;
-  }
-
-  g_L = lua_open();
-  if (g_L == NULL)
-  {
-    perror("lua_open()");
-    return EXIT_FAILURE;
-  }
-  
-  lua_gc(g_L,LUA_GCSTOP,0);
-  luaL_openlibs(g_L);
-  lua_gc(g_L,LUA_GCRESTART,0);
-
-  lua_register(g_L,"alarm",syslogintr_alarm);
-  lua_register(g_L,"host", syslogintr_host);
-  lua_register(g_L,"relay",syslogintr_relay);
-
-  luaL_newmetatable(g_L,LUA_UD_HOST);
-  lua_pushliteral(g_L,"__tostring");
-  lua_pushcfunction(g_L,syslogintr_ud__toprint);
-  lua_settable(g_L,-3);
-  lua_pop(g_L,1);
-  
   if (optind < argc)
   {
     if (argv[optind][0] == '/')
@@ -410,11 +372,23 @@ int main(int argc,char *argv[])
       g_luacode = luascript;
     }
   }
+  
+  /*--------------------------------------------------------
+  ; Okay, open the PID file (truncating if it already exists),
+  ; then drop our privs (if requested), go into daemon mode
+  ; (if requested), *then* write our PID to the file.  Set some
+  ; signal handlers, initialize Lua, load the script, and start
+  ; some logging ... 
+  ;-----------------------------------------------------------*/
 
-  lua_pushstring(g_L,g_luacode);
-  lua_setglobal(g_L,"scriptpath");
-  lua_pushstring(g_L,basename(g_luacode)); /* GNU basename() no mod. params */
-  lua_setglobal(g_L,"script");
+  fppid = fopen(PID_FILE,"w");
+
+  status = drop_privs();
+  if (!status.okay)
+  {
+    perror(status.msg);
+    return EXIT_FAILURE;
+  }
 
   if (!gf_foreground)
   {
@@ -437,6 +411,42 @@ int main(int argc,char *argv[])
   set_signal_handler(SIGUSR1,handle_signal);
   set_signal_handler(SIGHUP ,handle_signal);
   set_signal_handler(SIGALRM,handle_signal);
+
+  g_L = lua_open();
+  if (g_L == NULL)
+  {
+    perror("lua_open()");
+    return EXIT_FAILURE;
+  }
+  
+  lua_gc(g_L,LUA_GCSTOP,0);
+  luaL_openlibs(g_L);
+  lua_gc(g_L,LUA_GCRESTART,0);
+
+  /*--------------------------------------
+  ; register script name and path, plus the
+  ; functions we're exporting to Lua
+  ;---------------------------------------*/
+  
+  lua_pushstring(g_L,g_luacode);
+  lua_setglobal(g_L,"scriptpath");
+  lua_pushstring(g_L,basename(g_luacode));
+  lua_setglobal(g_L,"script");
+
+  lua_register(g_L,"alarm",syslogintr_alarm);
+  lua_register(g_L,"host", syslogintr_host);
+  lua_register(g_L,"relay",syslogintr_relay);
+
+  /*--------------------------------------------------
+  ; create a metatable for hostnames, which contains
+  ; the code to convert to a string.
+  ;---------------------------------------------------*/
+  
+  luaL_newmetatable(g_L,LUA_UD_HOST);
+  lua_pushliteral(g_L,"__tostring");
+  lua_pushcfunction(g_L,syslogintr_ud__toprint);
+  lua_settable(g_L,-3);
+  lua_pop(g_L,1);
   
   load_script();
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
@@ -912,8 +922,8 @@ Status parse_options(int argc,char *argv[])
   {
     switch(getopt_long_only(argc,argv,"",c_options,&option))
     {
-      case EOF:      
-           return c_okay;
+      default:
+           return retstatus(false,EINVAL,"getopt_long_only()");
       case OPT_NONE: 
            break;
       case OPT_IPv4:
@@ -937,8 +947,24 @@ Status parse_options(int argc,char *argv[])
       case OPT_HELP:
            usage(argv[0]);
            return retstatus(false,0,"");
-      default:
-           return retstatus(false,EINVAL,"getopt_long_only()");
+      case EOF:
+           return c_okay;
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
+           
     }
   }
 } 
@@ -1049,6 +1075,7 @@ void load_script(void)
 Status daemon_init(void)
 {
   pid_t pid;
+  int   fh;
   
   /*-----------------------------------------------------------------------
   ; From the Unix Programming FAQ (corraborated by Stevens):
@@ -1121,36 +1148,7 @@ Status daemon_init(void)
   ;    decide if you need to do this or not.  If you think that there might
   ;    be file-descriptors open you should close them, since there's a limit
   ;    on number of concurrent file descriptors.
-  ;------------------------------------------------------------------------*/    
-  
-  lua_getglobal(g_L,"io");
-  
-  lua_getfield(g_L,-1,"close");
-  lua_getfield(g_L,-2,"stdin");
-  lua_call(g_L,1,0);
-    
-  lua_getfield(g_L,-1,"close");
-  lua_getfield(g_L,-2,"stdout");
-  lua_call(g_L,1,0);
-    
-  lua_getfield(g_L,-1,"close");
-  lua_getfield(g_L,-2,"stderr");
-  lua_call(g_L,1,0);
-    
-  /*------------------------------------------------------------
-  ; these can fail safely as they may have been closed via Lua
-  ; but just to make sure ...
-  ;-----------------------------------------------------------*/
-  
-  fclose(stderr);
-  fclose(stdout);
-  fclose(stdin);
-  
-  close(STDERR_FILENO);
-  close(STDOUT_FILENO);
-  close(STDIN_FILENO);
-
-  /*------------------------------------------------------------------------
+  ;
   ; 7. Establish new open descriptors for stdin, stdout and stderr. Even if
   ;    you don't plan to use them, it is still a good idea to have them
   ;    open.  The precise handling of these is a matter of taste; if you
@@ -1158,31 +1156,25 @@ Status daemon_init(void)
   ;    stderr, and open '/dev/null' as stdin; alternatively, you could open
   ;    '/dev/console' as stderr and/or stdout, and '/dev/null' as stdin, or
   ;    any other combination that makes sense for your particular daemon.
+  ;
+  ; We do this here via dup2(), which combines steps 6 & 7.
   ;------------------------------------------------------------------------*/
 
-  lua_getfield(g_L,-1,"open");
-  lua_pushstring(g_L,"/dev/null");
-  lua_pushstring(g_L,"r");
-  lua_call(g_L,2,1);
-  lua_setfield(g_L,-2,"stdin");
+  fh = open(DEV_NULL,O_RDWR);
+  if (fh == -1)
+    return retstatus(false,errno,"open(" DEV_NULL ")");
   
-  lua_getfield(g_L,-1,"open");
-  lua_pushstring(g_L,"/dev/null");
-  lua_pushstring(g_L,"w");
-  lua_call(g_L,2,1);
-  lua_setfield(g_L,-2,"stdout");
-    
-  lua_getfield(g_L,-1,"open");
-  lua_pushstring(g_L,"/dev/null");
-  lua_pushstring(g_L,"w");
-  lua_call(g_L,2,1);
-  lua_setfield(g_L,-2,"stderr");
-    
-  lua_pop(g_L,lua_gettop(g_L));
-  syslog(LOG_DEBUG,"daemon mode---reopened io.stdin, io.stdout and io.stderr");
+  assert(fh > 2);
+  
+  dup2(fh,STDIN_FILENO);
+  dup2(fh,STDOUT_FILENO);
+  dup2(fh,STDERR_FILENO);
+  
+  close(fh);
+  
   return c_okay;
 }
-
+  
 /***********************************************************************/
 
 int map_str_to_int(const char *name,const char *const list[],size_t size)
