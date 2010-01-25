@@ -318,7 +318,6 @@ volatile sig_atomic_t mf_sigalarm;
 
 int main(int argc,char *argv[])
 {
-  char    luascript[FILENAME_MAX];
   Status  status;
   FILE   *fppid;
   
@@ -882,6 +881,7 @@ void process_msg(const struct msg *const pmsg)
 
 Status parse_options(int argc,char *argv[])
 {
+  char   luascript[FILENAME_MAX];
   Status status;
   int    option = 0;
   
