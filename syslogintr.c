@@ -422,7 +422,7 @@ int main(int argc,char *argv[])
   load_script();
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
-  while(true)
+  while(!mf_sigint)
   {
     struct epoll_event list[MAX_EVENTS];
     ListenNode         node;
@@ -431,8 +431,6 @@ int main(int argc,char *argv[])
     
     assert(lua_gettop(g_L) == 0);
     
-    if (mf_sigint) break;
-
     if (mf_sigusr1)
     {
       mf_sigusr1 = 0;
@@ -452,8 +450,7 @@ int main(int argc,char *argv[])
     }
 
     events = epoll_wait(g_queue,list,MAX_EVENTS,-1);
-    if ((events == -1) && (errno == EINTR)) continue;
-    
+
     for (i = 0 ; i < events ; i++)
     {
       node = list[i].data.ptr;
@@ -1107,8 +1104,8 @@ Status daemon_init(void)
   ;    [Equivalently, we could change to any directory containing files
   ;    important to the daemon's operation.] 
   ;
-  ;    I just made sure the name of the script we are using contains the
-  ;    full path.
+  ; I just made sure the name of the script we are using contains the full
+  ; path.
   ;-------------------------------------------------------------------------*/
             
   chdir("/");
