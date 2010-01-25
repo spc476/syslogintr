@@ -343,42 +343,10 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
 
-  if (optind < argc)
-  {
-    if (argv[optind][0] == '/')
-      g_luacode = argv[optind];
-    else
-    {
-      /*---------------------------------------------------------
-      ; this bit is here to turn a relative path into a full
-      ; path based upon our current path.  We do this because
-      ; we change to the root dirctory when going into daemon
-      ; mode.  This way, we won't hang a possible unmount command
-      ; because we're in some mounted directory---check comments
-      ; in daemon_init() for more details.
-      ;----------------------------------------------------------*/
-      
-      char  cwd[FILENAME_MAX];
-      char *path;
-      
-      path = getcwd(cwd,FILENAME_MAX);
-      if (path == NULL)
-      {
-        perror("getcwd()");
-        return EXIT_FAILURE;
-      }
-      
-      snprintf(luascript,FILENAME_MAX,"%s/%s",path,argv[optind]);
-      g_luacode = luascript;
-    }
-  }
-  
   /*--------------------------------------------------------
   ; Okay, open the PID file (truncating if it already exists),
   ; then drop our privs (if requested), go into daemon mode
-  ; (if requested), *then* write our PID to the file.  Set some
-  ; signal handlers, initialize Lua, load the script, and start
-  ; some logging ... 
+  ; (if requested), *then* write our PID to the file.  
   ;-----------------------------------------------------------*/
 
   fppid = fopen(PID_FILE,"w");
@@ -407,11 +375,10 @@ int main(int argc,char *argv[])
     fclose(fppid);
   }
 
-  set_signal_handler(SIGINT, handle_signal);
-  set_signal_handler(SIGUSR1,handle_signal);
-  set_signal_handler(SIGHUP ,handle_signal);
-  set_signal_handler(SIGALRM,handle_signal);
-
+  /*-----------------------------
+  ; initialize Lua
+  ;-----------------------------*/
+  
   g_L = lua_open();
   if (g_L == NULL)
   {
@@ -447,7 +414,12 @@ int main(int argc,char *argv[])
   lua_pushcfunction(g_L,syslogintr_ud__toprint);
   lua_settable(g_L,-3);
   lua_pop(g_L,1);
-  
+
+  set_signal_handler(SIGINT, handle_signal);
+  set_signal_handler(SIGUSR1,handle_signal);
+  set_signal_handler(SIGHUP ,handle_signal);
+  set_signal_handler(SIGALRM,handle_signal);
+
   load_script();
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
 
@@ -948,23 +920,33 @@ Status parse_options(int argc,char *argv[])
            usage(argv[0]);
            return retstatus(false,0,"");
       case EOF:
+           if (optind < argc)
+           {
+             if (argv[optind][0] == '/')
+               g_luacode = argv[optind];
+             else
+             {
+               /*---------------------------------------------------------
+               ; this bit is here to turn a relative path into a full path
+               ; based upon our current path.  We do this because we change
+               ; to the root dirctory when going into daemon mode.  This
+               ; way, we won't hang a possible unmount command because we're
+               ; in some mounted directory---check comments in daemon_init()
+               ; for more details.
+               ;----------------------------------------------------------*/
+      
+               char  cwd[FILENAME_MAX];
+               char *path;
+      
+               path = getcwd(cwd,FILENAME_MAX);
+               if (path == NULL)
+                 return retstatus(false,errno,"getcwd()");
+
+               snprintf(luascript,FILENAME_MAX,"%s/%s",path,argv[optind]);
+               g_luacode = luascript;
+             }
+           }
            return c_okay;
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
-           
     }
   }
 } 
