@@ -206,7 +206,7 @@ Status		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
 void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
 void		process_msg		(const struct msg *const);
-Status		parse_options		(int,char *[]);
+Status		globalv_init		(int,char *[]);
 void		usage			(const char *);
 Status		drop_privs		(void);
 Status		daemon_init		(void);
@@ -320,21 +320,8 @@ int main(int argc,char *argv[])
 {
   Status  status;
   FILE   *fppid;
-  
-  openlog(basename(argv[0]),0,LOG_SYSLOG);
-
-  g_ipv4.sock  = -1;
-  g_ipv6.sock  = -1;
-  g_local.sock = -1;
-  
-  g_queue = epoll_create(MAX_EVENTS);
-  if (g_queue == -1)
-  {
-    perror("epoll_create()");
-    return EXIT_FAILURE;
-  }
-  
-  status = parse_options(argc,argv);
+    
+  status = globalv_init(argc,argv);
   if (!status.okay)
   {
     if (status.err != 0)
@@ -861,7 +848,7 @@ void process_msg(const struct msg *const pmsg)
 
 /**********************************************************************/
 
-Status parse_options(int argc,char *argv[])
+Status globalv_init(int argc,char *argv[])
 {
   char   luascript[FILENAME_MAX];
   Status status;
@@ -870,6 +857,19 @@ Status parse_options(int argc,char *argv[])
   assert(argc >  0);
   assert(argv != NULL);
   
+  openlog(basename(argv[0]),0,LOG_SYSLOG);
+
+  g_ipv4.sock  = -1;
+  g_ipv6.sock  = -1;
+  g_local.sock = -1;
+  
+  g_queue = epoll_create(MAX_EVENTS);
+  if (g_queue == -1)
+  {
+    perror("epoll_create()");
+    return EXIT_FAILURE;
+  }
+
   opterr = 0;	/* prevent getopt_long_only() from printing error message */
   
   while(true)
