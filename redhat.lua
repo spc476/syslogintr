@@ -66,7 +66,7 @@ end
 -- *********************************************************************
 
 local function logfile(msg,file,flushp)
-  local flushp = flushp or true
+  local flushp = flushp or false
   
   if msg.remote == false then
     msg.host = "localhost"
@@ -95,47 +95,47 @@ end
 -- ******************************************************************
 
 function log(msg)
-  if log.level == 'info'   or
-     log.level == 'notice' or
-     log.level == 'warn'   or
-     log.level == 'err'    or
-     log.level == 'crit'   or
-     log.level == 'alert'  or
-     log.level == 'emerg' then
-       if log.facility ~= 'mail'  and
-          log.facility ~= 'auth2' and
-          log.facility ~= 'cron'  and
-          log.facility ~= 'local6' then
+  if msg.level == 'info'   or
+     msg.level == 'notice' or
+     msg.level == 'warn'   or
+     msg.level == 'err'    or
+     msg.level == 'crit'   or
+     msg.level == 'alert'  or
+     msg.level == 'emerg' then
+       if msg.facility ~= 'mail'  and
+          msg.facility ~= 'auth2' and
+          msg.facility ~= 'cron'  and
+          msg.facility ~= 'local6' then
             logfile(msg,messages)
           end
      end
 
-  if log.facility == 'auth2' then
+  if msg.facility == 'auth2' then
     logfile(msg,secure)
   end
   
-  if log.facility == 'mail' then
-    logfile(msg,maillog,false)
+  if msg.facility == 'mail' then
+    logfile(msg,maillog,true)
   end
   
-  if log.facility == 'cron' then
+  if msg.facility == 'cron' then
     logfile(msg,cron)
   end
   
-  if log.level == 'emerg' then
+  if msg.level == 'emerg' then
     everybody(msg)
   end
   
-  if log.facility == 'uucp' or
-     log.facility == 'news' then
-       if log.level == 'crit' or
-          log.level == 'alert' or
-          log.level == 'emerg' then
+  if msg.facility == 'uucp' or
+     msg.facility == 'news' then
+       if msg.level == 'crit' or
+          msg.level == 'alert' or
+          msg.level == 'emerg' then
             logfile(msg,spooler)
           end
       end
 
-  if log.facility == 'local7' then
+  if msg.facility == 'local7' then
     logfile(msg,boot)
   end
 end
