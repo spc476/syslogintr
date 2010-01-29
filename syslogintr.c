@@ -865,10 +865,7 @@ Status globalv_init(int argc,char *argv[])
   
   g_queue = epoll_create(MAX_EVENTS);
   if (g_queue == -1)
-  {
-    perror("epoll_create()");
-    return EXIT_FAILURE;
-  }
+    return retstatus(false,errno,"epoll_create()");
 
   opterr = 0;	/* prevent getopt_long_only() from printing error message */
   
