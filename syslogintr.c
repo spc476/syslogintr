@@ -860,9 +860,9 @@ void process_msg(const struct msg *const pmsg)
 
 Status globalv_init(int argc,char *argv[])
 {
-  char   luascript[FILENAME_MAX];
-  Status status;
-  int    option = 0;
+  static char luascript[FILENAME_MAX];
+  Status      status;
+  int         option = 0;
   
   assert(argc >  0);
   assert(argv != NULL);
