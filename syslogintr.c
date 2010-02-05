@@ -125,6 +125,7 @@
 #define MAX_FACILITY	24
 #define MAX_LEVEL	 8
 #define MAX_EVENTS	60
+#define MAX_SOCKETS	15
 #define MAX_MSGLEN	1024
 
 #define LOG_PORT	514
@@ -148,6 +149,7 @@ enum
   OPT_IPv4,
   OPT_IPv6,
   OPT_LOCAL,
+  OPT_SOCKET,
   OPT_HELP
 };
 
@@ -201,7 +203,7 @@ struct msg
 
 Status		ipv4_socket		(void);
 Status		ipv6_socket		(void);
-Status		local_socket		(void);
+Status		local_socket		(struct listen_node *,const char *);
 Status		create_socket		(ListenNode,socklen_t);
 void		event_read		(struct epoll_event *);
 void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
@@ -250,16 +252,19 @@ lua_State           *g_L;
 struct listen_node   g_ipv4;
 struct listen_node   g_ipv6;
 struct listen_node   g_local;
+struct listen_node   g_sockets[MAX_SOCKETS];
+size_t               g_maxsocket;
 
-const struct option c_options[] =
+const struct option c_options [] =
 {
+  { "foreground"   , no_argument       , &gf_foreground , true          } ,
   { "ip"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ip4"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ipv4"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ip6"	   , no_argument       , NULL		, OPT_IPv6	} ,
   { "ipv6"	   , no_argument       , NULL		, OPT_IPv6	} ,
   { "local"	   , no_argument       , NULL		, OPT_LOCAL     } ,
-  { "foreground"   , no_argument       , &gf_foreground , true          } ,
+  { "socket"	   , required_argument , NULL		, OPT_SOCKET	} ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
   { "group"        , required_argument , NULL           , OPT_GROUP     } ,
   { "help"         , no_argument       , NULL           , OPT_HELP      } ,
@@ -434,6 +439,12 @@ int main(int argc,char *argv[])
   lua_close(g_L);
   close(g_queue);
   
+  for (size_t i = 0 ; i < MAX_SOCKETS; i++)
+  {
+    if (g_sockets[i].sock != -1) close(g_sockets[i].sock);
+    unlink(g_sockets[i].local.sun.sun_path);
+  }
+  
   if (g_local.sock != -1) close(g_local.sock);
   if (g_ipv6.sock  != -1) close(g_local.sock);
   if (g_ipv4.sock  != -1) close(g_local.sock);
@@ -464,16 +475,18 @@ Status ipv6_socket(void)
 
 /**************************************************************/
 
-Status local_socket(void)
+Status local_socket(struct listen_node *node,const char *name)
 {
   Status status;
   mode_t oldmask;
   
+  assert(name != NULL);
+  
   oldmask = umask(0111);
-  unlink(LOG_LOCAL);
-  strcpy(g_local.local.sun.sun_path,LOG_LOCAL);
-  g_local.local.sun.sun_family = AF_LOCAL;
-  status = create_socket(&g_local,sizeof(g_local.local.sun));
+  unlink(name);
+  strcpy(node->local.sun.sun_path,name);
+  node->local.sun.sun_family = AF_LOCAL;
+  status = create_socket(node,sizeof(node->local.sun));
   umask(oldmask);
   return status;
 }
@@ -860,6 +873,9 @@ Status globalv_init(int argc,char *argv[])
   g_ipv6.sock  = -1;
   g_local.sock = -1;
   
+  for (size_t i = 0 ; i < MAX_SOCKETS; i++)
+    g_sockets[i].sock = -1;
+  
   g_queue = epoll_create(MAX_EVENTS);
   if (g_queue == -1)
     return retstatus(false,errno,"epoll_create()");
@@ -883,7 +899,13 @@ Status globalv_init(int argc,char *argv[])
            if (!status.okay) return status;
            break;
       case OPT_LOCAL:
-           status = local_socket();
+           status = local_socket(&g_local,LOG_LOCAL);
+           if (!status.okay) return status;
+           break;
+      case OPT_SOCKET:
+           if (g_maxsocket == MAX_SOCKETS)
+             return retstatus(false,EADDRNOTAVAIL,"globalv_init()");
+           status = local_socket(&g_sockets[g_maxsocket++],optarg);
            if (!status.okay) return status;
            break;
       case OPT_USER:
@@ -942,12 +964,14 @@ void usage(const char *progname)
         "\t--ip6                     accept from IPv6 hosts\n"
         "\t--ipv6                           \"\n"
         "\t--local                   accept from " LOG_LOCAL "\n"
+        "\t--socket <filespec>       accept from local socket (%d max)\n"
         "\t--foreground              run in foreground\n"
         "\t--user  <username>        user to run as (no default)\n"
         "\t--group <groupname>       group to run as (no default)\n"
         "\t--help                    this message\n"
         "\n",
-        progname
+        progname,
+        MAX_SOCKETS
   );
 }
 
