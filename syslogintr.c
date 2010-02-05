@@ -559,7 +559,6 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
   char       host[BUFSIZ];
   struct tm  dateread;
   time_t     now;
-  div_t      faclev;
   int        value;
   char      *p;
   char      *q;
@@ -639,10 +638,8 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
     return;
   }
   
-  faclev = div(value,8);
-
-  msg.facility  = faclev.quot;
-  msg.level     = faclev.rem;
+  msg.facility  = value / 8;
+  msg.level     = value % 8;
   
   /*---------------------------------------------
   ; check for a supplied timestamp.
