@@ -654,6 +654,21 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
   msg.facility  = value / 8;
   msg.level     = value % 8;
   
+  /*-------------------------------------------
+  ; check to make sure our facility doesn't
+  ; exceed what we're expecting
+  ;-------------------------------------------*/
+  
+  if (msg.facility > 23)	/* LOG_LOCAL7 */
+  {
+    msg.facility = 1;	/* LOG_USER */
+    msg.level    = 5;	/* LOG_NOTICE */
+    msg.msg      = msg.raw;
+    
+    process_msg(&msg);
+    return;
+  }
+  
   /*---------------------------------------------
   ; check for a supplied timestamp.
   ;---------------------------------------------*/
