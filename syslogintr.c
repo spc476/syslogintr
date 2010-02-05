@@ -964,7 +964,7 @@ void usage(const char *progname)
         "\t--ip6                     accept from IPv6 hosts\n"
         "\t--ipv6                           \"\n"
         "\t--local                   accept from " LOG_LOCAL "\n"
-        "\t--socket <filespec>       accept from local socket (%d max)\n"
+        "\t--socket <path>           accept from local socket (%d max)\n"
         "\t--foreground              run in foreground\n"
         "\t--user  <username>        user to run as (no default)\n"
         "\t--group <groupname>       group to run as (no default)\n"
