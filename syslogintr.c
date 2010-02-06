@@ -1130,7 +1130,7 @@ Status daemon_init(void)
   ;    anything we write. We don't know what umask we may have inherited.
   ;-----------------------------------------------------------------------*/
 
-  umask(0);       
+  umask(0022);       
   
   /*-----------------------------------------------------------------------
   ; 6. 'close()' fds 0, 1, and 2. This releases the standard in, out, and
