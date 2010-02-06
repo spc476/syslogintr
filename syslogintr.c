@@ -100,12 +100,12 @@
 #include <string.h>
 #include <time.h>
 
-#include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <poll.h>
@@ -138,18 +138,53 @@
 #define PID_FILE	"/var/run/syslogd.pid"
 #define DEV_NULL	"/dev/null"
 
+/************************************************************************
+*
+* And now the ugly, non-portable bits.  This stuff bites and I hate that
+* I have to do this, but alas, if I want this to compile on stuff other
+* than my own system ... 
+*
+************************************************************************/
+
+#ifdef __APPLE__
+#  undef LOG_LOCAL
+#  define LOG_LOCAL	"/var/run/syslog"
+#  ifndef AI_NUMERICSERV
+#    define AI_NUMERICSERV	0
+#  endif
+
+#  ifndef _SC_GETPW_R_SIZE_MAX
+#    define sysconf(x)	BUFSIZ
+#  endif
+
+#  define getopt_long(argc,argv,opts,long,idx)	getopt((argc),(argv),(opts))
+
+   static inline char *basename(const char *path)
+   {
+     char *c;
+     
+     c = strrchr(path,'/');
+     if (c)
+       return c + 1;
+     else
+       return c;
+   }
+
+#endif
+
 /*****************************************************************/
 
 enum
 {
-  OPT_NONE,
-  OPT_USER,
-  OPT_GROUP,
-  OPT_IPv4,
-  OPT_IPv6,
-  OPT_LOCAL,
-  OPT_SOCKET,
-  OPT_HELP
+  OPT_NONE	= '\0',
+  OPT_USER	= 'u',
+  OPT_GROUP	= 'g',
+  OPT_IPv4	= '4',
+  OPT_IPv6	= '6',
+  OPT_LOCAL	= 'l',
+  OPT_SOCKET	= 's',
+  OPT_FG	= 'f',
+  OPT_HELP	= 'h'
 };
 
 typedef struct status
@@ -253,7 +288,7 @@ size_t               g_ipv6;
 
 const struct option c_options [] =
 {
-  { "foreground"   , no_argument       , &gf_foreground , true          } ,
+  { "foreground"   , no_argument       , NULL		, OPT_FG        } ,
   { "ip"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ip4"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ipv4"	   , no_argument       , NULL		, OPT_IPv4	} ,
@@ -890,11 +925,14 @@ Status globalv_init(int argc,char *argv[])
   
   while(true)
   {
-    switch(getopt_long_only(argc,argv,"",c_options,&option))
+    switch(getopt_long(argc,argv,"f46lhu:g:s:",c_options,&option))
     {
       default:
            return retstatus(false,EINVAL,"getopt_long_only()");
       case OPT_NONE: 
+           break;
+      case OPT_FG:
+           gf_foreground = 1;
            break;
       case OPT_IPv4:
            status = ipv4_socket();
@@ -962,17 +1000,17 @@ void usage(const char *progname)
   fprintf(
   	stderr,
         "usage: %s [options...] [luafile]\n"
-        "\t--ip                      accept from IPv4 hosts\n"
-        "\t--ip4                            \"\n"
-        "\t--ipv4                           \"\n"
-        "\t--ip6                     accept from IPv6 hosts\n"
-        "\t--ipv6                           \"\n"
-        "\t--local                   accept from " LOG_LOCAL "\n"
-        "\t--socket <path>           accept from unix socket (%d max)\n"
-        "\t--foreground              run in foreground\n"
-        "\t--user  <username>        user to run as (no default)\n"
-        "\t--group <groupname>       group to run as (no default)\n"
-        "\t--help                    this message\n"
+        "\t-4 | --ip                      accept from IPv4 hosts\n"
+        "\t   | --ip4                            \"\n"
+        "\t   | --ipv4                           \"\n"
+        "\t-6 | --ip6                     accept from IPv6 hosts\n"
+        "\t   | --ipv6                           \"\n"
+        "\t-l | --local                   accept from " LOG_LOCAL "\n"
+        "\t-s | --socket <path>           accept from unix socket (%d max)\n"
+        "\t-f | --foreground              run in foreground\n"
+        "\t-u | --user  <username>        user to run as (no default)\n"
+        "\t-g | --group <groupname>       group to run as (no default)\n"
+        "\t-h | --help                    this message\n"
         "\n",
         progname,
         MAX_SOCKETS - 3		/* possible IPv4, IPv6 and default local */
