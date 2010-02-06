@@ -76,6 +76,9 @@
 *	OpenBSD
 *	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -lm -llua
 *
+*	Solaris (using native Sun compiler)
+*	cc -xc99 -g -o syslogintr syslogintr.c -llua -ldl -lm -lsocket -lnsl
+*
 * [1]	if the incoming syslog request has a timestamp, this will contain
 *	it, otherwise, it's equal to the timestamp field.
 *
@@ -95,6 +98,7 @@
 ************************************************************************/
 
 #define _GNU_SOURCE
+#define _POSIX_PTHREAD_SEMANTICS
 
 #include <assert.h>
 #include <ctype.h>
@@ -164,7 +168,18 @@
 #  endif
 
 #  define getopt_long(argc,argv,opts,long,idx)	getopt((argc),(argv),(opts))
+#endif
 
+#ifdef __OpenBSD__
+#  include <libgen.h>
+#endif
+
+#ifdef __SunOS
+#  define AF_LOCAL	AF_UNIX
+#  include <sys/un.h>
+#endif
+
+#if defined(__APPLE__) || defined(__SunOS)
    static inline char *basename(const char *path)
    {
      char *c;
@@ -175,11 +190,6 @@
      else
        return c;
    }
-
-#endif
-
-#ifdef __OpenBSD__
-#  include <libgen.h>
 #endif
 
 /*****************************************************************/
@@ -209,7 +219,7 @@ typedef union sockaddr_all
   struct sockaddr         ss;
   struct sockaddr_in      sin;
   struct sockaddr_in6     sin6;
-  struct sockaddr_un      sun;
+  struct sockaddr_un      ssun;
   struct sockaddr_storage ssto;
 } sockaddr_all;
 
@@ -487,7 +497,7 @@ int main(int argc,char *argv[])
   {
     if (g_sockets[i].sock != -1) close(g_sockets[i].sock);
     if (g_sockets[i].local.ss.sa_family == AF_LOCAL)
-      unlink(g_sockets[i].local.sun.sun_path);
+      unlink(g_sockets[i].local.ssun.sun_path);
   }
   
   unlink(PID_FILE);	/* don't care if this succeeds or not */
@@ -545,9 +555,9 @@ Status local_socket(const char *name)
     
   unlink(name);
   memset(&g_sockets[local].local,0,sizeof(struct sockaddr_un));
-  memcpy(g_sockets[local].local.sun.sun_path,name,namelen);
-  g_sockets[local].local.sun.sun_family = AF_LOCAL;
-  status = create_socket(&g_sockets[local],sizeof(g_sockets[local].local.sun));
+  memcpy(g_sockets[local].local.ssun.sun_path,name,namelen);
+  g_sockets[local].local.ssun.sun_family = AF_LOCAL;
+  status = create_socket(&g_sockets[local],sizeof(g_sockets[local].local.ssun));
   umask(oldmask);
   return status;
 }
@@ -665,8 +675,8 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
   else
   {
     msg.remote    = false;
-    msg.host.size = strlen(ploc->sun.sun_path);
-    msg.host.text = ploc->sun.sun_path;
+    msg.host.size = strlen(ploc->ssun.sun_path);
+    msg.host.text = ploc->ssun.sun_path;
     msg.port      = -1;
   }
   
@@ -1073,7 +1083,7 @@ Status drop_privs(void)
 
   for (size_t i = 0 ; i < g_maxsocket ; i++)
     if (g_sockets[i].local.ss.sa_family == AF_LOCAL)
-      chown(g_sockets[i].local.sun.sun_path,uinfo.pw_uid,ginfo.gr_gid);
+      chown(g_sockets[i].local.ssun.sun_path,uinfo.pw_uid,ginfo.gr_gid);
 
   /*-------------------------------------------------------------------
   ; change our group id first, then user id.  If we drop user id first,
