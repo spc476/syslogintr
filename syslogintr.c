@@ -937,7 +937,7 @@ Status globalv_init(int argc,char *argv[])
   for (size_t i = 0 ; i < MAX_SOCKETS; i++)
     g_sockets[i].sock = -1;
 
-  opterr = 0;	/* prevent getopt_long_only() from printing error message */
+  opterr = 0;	/* prevent getopt_long() from printing error message */
   
   while(true)
   {
@@ -1179,11 +1179,11 @@ Status daemon_init(void)
   chdir("/");
   
   /*-----------------------------------------------------------------------
-  ; 5. 'umask(0)' so that we have complete control over the permissions of
+  ; 5. 'umask(022)' so that we have complete control over the permissions of
   ;    anything we write. We don't know what umask we may have inherited.
   ;-----------------------------------------------------------------------*/
 
-  umask(0022);       
+  umask(022);       
   
   /*-----------------------------------------------------------------------
   ; 6. 'close()' fds 0, 1, and 2. This releases the standard in, out, and
