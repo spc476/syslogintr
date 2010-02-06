@@ -523,6 +523,7 @@ Status local_socket(const char *name)
   Status status;
   mode_t oldmask;
   size_t local;
+  size_t namelen;
   
   assert(name != NULL);
   
@@ -531,9 +532,14 @@ Status local_socket(const char *name)
     
   local   = g_maxsocket++;  
   oldmask = umask(0111);
-  
+  namelen = strlen(name);
+
+  if (namelen > sizeof(struct sockaddr_un) - 1)
+    namelen = sizeof(struct sockaddr_un) - 1;
+    
   unlink(name);
-  strcpy(g_sockets[local].local.sun.sun_path,name);
+  memset(&g_sockets[local].local,0,sizeof(struct sockaddr_un));
+  memcpy(g_sockets[local].local.sun.sun_path,name,namelen);
   g_sockets[local].local.sun.sun_family = AF_LOCAL;
   status = create_socket(&g_sockets[local],sizeof(g_sockets[local].local.sun));
   umask(oldmask);
