@@ -1011,17 +1011,19 @@ void usage(const char *progname)
   fprintf(
   	stderr,
         "usage: %s [options...] [luafile]\n"
-        "\t-4 | --ip                      accept from IPv4 hosts\n"
+        "\t-4 | --ip                       accept from IPv4 hosts\n"
         "\t   | --ip4                            \"\n"
         "\t   | --ipv4                           \"\n"
-        "\t-6 | --ip6                     accept from IPv6 hosts\n"
+        "\t-6 | --ip6                      accept from IPv6 hosts\n"
         "\t   | --ipv6                           \"\n"
-        "\t-l | --local                   accept from " LOG_LOCAL "\n"
-        "\t-s | --socket <path>           accept from unix socket (%d max)\n"
-        "\t-f | --foreground              run in foreground\n"
-        "\t-u | --user  <username>        user to run as (no default)\n"
-        "\t-g | --group <groupname>       group to run as (no default)\n"
-        "\t-h | --help                    this message\n"
+        "\t-l | --local                    accept from " LOG_LOCAL "\n"
+        "\t-s | --socket <path>            accept from unix socket (%d max)\n"
+        "\t-f | --foreground               run in foreground\n"
+        "\t-u | --user  <username>         user to run as (no default)\n"
+        "\t-g | --group <groupname>        group to run as (no default)\n"
+        "\t-h | --help                     this message\n"
+        "\n"
+        "\t" LUA_CODE "\tdefault luafile\n"
         "\n",
         progname,
         MAX_SOCKETS - 3		/* possible IPv4, IPv6 and default local */
