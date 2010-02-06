@@ -157,17 +157,15 @@
 ************************************************************************/
 
 #ifdef __APPLE__
+#  include <libgen.h>
 #  undef LOG_LOCAL
 #  define LOG_LOCAL	"/var/run/syslog"
 #  ifndef AI_NUMERICSERV
 #    define AI_NUMERICSERV	0
 #  endif
-
 #  ifndef _SC_GETPW_R_SIZE_MAX
 #    define sysconf(x)	BUFSIZ
 #  endif
-
-#  define getopt_long(argc,argv,opts,long,idx)	getopt((argc),(argv),(opts))
 #endif
 
 #ifdef __OpenBSD__
@@ -176,20 +174,8 @@
 
 #ifdef __SunOS
 #  define AF_LOCAL	AF_UNIX
+#  include <libgen.h>
 #  include <sys/un.h>
-#endif
-
-#if defined(__APPLE__) || defined(__SunOS)
-   static inline char *basename(const char *path)
-   {
-     char *c;
-     
-     c = strrchr(path,'/');
-     if (c)
-       return c + 1;
-     else
-       return c;
-   }
 #endif
 
 /*****************************************************************/
@@ -424,7 +410,7 @@ int main(int argc,char *argv[])
 
   lua_pushstring(g_L,g_luacode);
   lua_setglobal(g_L,"scriptpath");
-  lua_pushstring(g_L,basename(g_luacode));
+  lua_pushstring(g_L,basename(g_luacode)); /* Solaris bitches about this line */
   lua_setglobal(g_L,"script");
 
   lua_register(g_L,"alarm",syslogintr_alarm);
