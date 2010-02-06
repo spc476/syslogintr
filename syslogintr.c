@@ -65,9 +65,16 @@
 *	scriptpath	- the full path to the script being run
 *	script		- the basename of the script being run
 *
-* To compile:
+* To compile (assuming the Lua header files and library are installed):
 *
+*	Linux:
 * 	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -ldl -lm -llua
+*
+*	Mac-OS/X
+*	gcc -std=c99 -g -o syslogintr syslogintr.c -ldl -lm -llua
+*
+*	OpenBSD
+*	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -lm -llua
 *
 * [1]	if the incoming syslog request has a timestamp, this will contain
 *	it, otherwise, it's equal to the timestamp field.
@@ -76,9 +83,8 @@
 *
 * [3]	if the incoming syslog request has a program field.
 *
-* [4]	IP address (IPv4 or IPv6) of the request.  If it's from the local
-*	socket (defaults to "/dev/log" under Linux) this will be the
-*	filename of the localsocket.
+* [4]	IP address (IPv4 or IPv6) of the request.  If it's from a local
+*	socket this will be the filename of the localsocket.
 *
 * [5]	Remote port of the request, or 0 if from the localsocket.
 *
@@ -938,7 +944,9 @@ Status globalv_init(int argc,char *argv[])
     switch(getopt_long(argc,argv,"f46lhu:g:s:",c_options,&option))
     {
       default:
-           return retstatus(false,EINVAL,"getopt_long_only()");
+      case OPT_HELP:
+           usage(argv[0]);
+           return retstatus(false,0,"");
       case OPT_NONE: 
            break;
       case OPT_FG:
@@ -966,9 +974,6 @@ Status globalv_init(int argc,char *argv[])
       case OPT_GROUP:
            g_group = optarg;
            break;
-      case OPT_HELP:
-           usage(argv[0]);
-           return retstatus(false,0,"");
       case EOF:
            if (optind < argc)
            {
