@@ -105,10 +105,10 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -124,8 +124,7 @@
 
 #define MAX_FACILITY	24
 #define MAX_LEVEL	 8
-#define MAX_EVENTS	60
-#define MAX_SOCKETS	15
+#define MAX_SOCKETS	18
 #define MAX_MSGLEN	1024
 
 #define LOG_PORT	514
@@ -169,12 +168,11 @@ typedef union sockaddr_all
   struct sockaddr_storage ssto;
 } sockaddr_all;
 
-typedef struct listen_node
+typedef struct socket_node
 {
-  void         (*fn)(struct epoll_event *);
-  int            sock;
-  sockaddr_all   local;
-} *ListenNode;
+  int          sock;
+  sockaddr_all local;
+} *SocketNode;
 
 struct sysstring
 {
@@ -203,9 +201,9 @@ struct msg
 
 Status		ipv4_socket		(void);
 Status		ipv6_socket		(void);
-Status		local_socket		(struct listen_node *,const char *);
-Status		create_socket		(ListenNode,socklen_t);
-void		event_read		(struct epoll_event *);
+Status		local_socket		(const char *);
+Status		create_socket		(SocketNode,socklen_t);
+void		event_read		(SocketNode);
 void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
 void		process_msg		(const struct msg *const);
 Status		globalv_init		(int,char *[]);
@@ -242,18 +240,16 @@ extern int   optind;
 extern int   opterr;
 extern int   optopt;
 
-int                  g_queue;
 unsigned int         g_alarm;
 const char          *g_luacode     = LUA_CODE;
 const char          *g_user;
 const char          *g_group;
 int                  gf_foreground;
 lua_State           *g_L;
-struct listen_node   g_ipv4;
-struct listen_node   g_ipv6;
-struct listen_node   g_local;
-struct listen_node   g_sockets[MAX_SOCKETS];
+struct socket_node   g_sockets[MAX_SOCKETS];
 size_t               g_maxsocket;
+size_t               g_ipv4;
+size_t               g_ipv6;
 
 const struct option c_options [] =
 {
@@ -398,14 +394,17 @@ int main(int argc,char *argv[])
 
   load_script();
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
+  
+  struct pollfd events[g_maxsocket];
+  
+  for (size_t i = 0 ; i < g_maxsocket ; i++)
+  {
+    events[i].fd     = g_sockets[i].sock;
+    events[i].events = POLLIN;
+  }
 
   while(!mf_sigint)
   {
-    struct epoll_event list[MAX_EVENTS];
-    ListenNode         node;
-    int                events;
-    int                i;
-    
     assert(lua_gettop(g_L) == 0);
     
     if (mf_sigusr1)
@@ -425,30 +424,27 @@ int main(int argc,char *argv[])
       mf_sigalarm = 0;
       call_optional_luaf("alarm_handler");
     }
-
-    events = epoll_wait(g_queue,list,MAX_EVENTS,-1);
-
-    for (i = 0 ; i < events ; i++)
+    
+    if (poll(events,g_maxsocket,-1) < 1)
+      continue;	/* continue on errors and timeouts */
+    
+    for (size_t i = 0 ; i < g_maxsocket; i++)
     {
-      node = list[i].data.ptr;
-      (*node->fn)(&list[i]);
+      if ((events[i].revents & POLLIN))
+        event_read(&g_sockets[i]);
     }
   }
 
   call_optional_luaf("cleanup");  
   lua_close(g_L);
-  close(g_queue);
   
-  for (size_t i = 0 ; i < MAX_SOCKETS; i++)
+  for (size_t i = 0 ; i < g_maxsocket; i++)
   {
     if (g_sockets[i].sock != -1) close(g_sockets[i].sock);
-    unlink(g_sockets[i].local.sun.sun_path);
+    if (g_sockets[i].local.ss.sa_family == AF_LOCAL)
+      unlink(g_sockets[i].local.sun.sun_path);
   }
   
-  if (g_local.sock != -1) close(g_local.sock);
-  if (g_ipv6.sock  != -1) close(g_local.sock);
-  if (g_ipv4.sock  != -1) close(g_local.sock);
-
   unlink(PID_FILE);	/* don't care if this succeeds or not */
   return EXIT_SUCCESS;
 }
@@ -457,52 +453,64 @@ int main(int argc,char *argv[])
 
 Status ipv4_socket(void)
 {
-  inet_pton(AF_INET,LOG_IPv4,&g_ipv4.local.sin.sin_addr.s_addr);
-  g_ipv4.local.sin.sin_family = AF_INET;
-  g_ipv4.local.sin.sin_port   = htons(LOG_PORT);
-  return create_socket(&g_ipv4,sizeof(g_ipv4.local.sin));
+  if (g_maxsocket == MAX_SOCKETS)
+    return retstatus(false,EADDRNOTAVAIL,"ipv4_socket()");
+    
+  g_ipv4 = g_maxsocket++;
+  inet_pton(AF_INET,LOG_IPv4,&g_sockets[g_ipv4].local.sin.sin_addr.s_addr);
+  g_sockets[g_ipv4].local.sin.sin_family = AF_INET;
+  g_sockets[g_ipv4].local.sin.sin_port   = htons(LOG_PORT);
+  return create_socket(&g_sockets[g_ipv4],sizeof(struct sockaddr_in));
 }
 
 /*************************************************************/
 
 Status ipv6_socket(void)
 {
-  inet_pton(AF_INET6,LOG_IPv6,&g_ipv6.local.sin6.sin6_addr.s6_addr);
-  g_ipv6.local.sin6.sin6_family = AF_INET6;
-  g_ipv6.local.sin6.sin6_port   = htons(LOG_PORT);
-  return create_socket(&g_ipv6,sizeof(g_ipv6.local.sin6));
+  if (g_maxsocket == MAX_SOCKETS)
+    return retstatus(false,EADDRNOTAVAIL,"ipv6_socket()");
+  
+  g_ipv6 = g_maxsocket++;
+  inet_pton(AF_INET6,LOG_IPv6,&g_sockets[g_ipv6].local.sin6.sin6_addr.s6_addr);
+  g_sockets[g_ipv6].local.sin6.sin6_family = AF_INET6;
+  g_sockets[g_ipv6].local.sin6.sin6_port   = htons(LOG_PORT);
+  return create_socket(&g_sockets[g_ipv6],sizeof(struct sockaddr_in6));
 }
 
 /**************************************************************/
 
-Status local_socket(struct listen_node *node,const char *name)
+Status local_socket(const char *name)
 {
   Status status;
   mode_t oldmask;
+  size_t local;
   
   assert(name != NULL);
   
+  if (g_maxsocket == MAX_SOCKETS)
+    return retstatus(false,EADDRNOTAVAIL,"local_socket()");
+    
+  local   = g_maxsocket++;  
   oldmask = umask(0111);
+  
   unlink(name);
-  strcpy(node->local.sun.sun_path,name);
-  node->local.sun.sun_family = AF_LOCAL;
-  status = create_socket(node,sizeof(node->local.sun));
+  strcpy(g_sockets[local].local.sun.sun_path,name);
+  g_sockets[local].local.sun.sun_family = AF_LOCAL;
+  status = create_socket(&g_sockets[local],sizeof(g_sockets[local].local.sun));
   umask(oldmask);
   return status;
 }
 
 /*******************************************************************/
 
-Status create_socket(ListenNode listen,socklen_t saddr)
+Status create_socket(SocketNode listen,socklen_t saddr)
 {
-  struct epoll_event  ev;
-  int                 rc;
-  int                 reuse = 1;
+  int reuse = 1;
+  int rc;
 
   assert(listen != NULL);  
   assert(saddr  >  0);
   
-  listen->fn   = event_read;
   listen->sock = socket(listen->local.ss.sa_family,SOCK_DGRAM,0);
   
   if (setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse)) == -1)
@@ -518,32 +526,23 @@ Status create_socket(ListenNode listen,socklen_t saddr)
   if (bind(listen->sock,&listen->local.ss,saddr) == -1)
     return retstatus(false,errno,"bind()");
   
-  memset(&ev,0,sizeof(ev));
-  ev.events   = EPOLLIN;
-  ev.data.ptr = listen;
-  
-  if (epoll_ctl(g_queue,EPOLL_CTL_ADD,listen->sock,&ev) == -1)
-    return retstatus(false,errno,"epoll_ctl(ADD)");
- 
   return c_okay;
 }
  
 /*****************************************************************/  
 
-void event_read(struct epoll_event *ev)
+void event_read(SocketNode sock)
 {
-  ListenNode   node;
   sockaddr_all remote;           
   socklen_t    remsize;
   ssize_t      bytes;
   char         buffer[65536uL]; /* 65507 max size of UDP packet */
   
-  assert(ev != NULL);
+  assert(sock != NULL);
   
   memset(&remote,0,sizeof(remote));
-  node    = ev->data.ptr;
   remsize = sizeof(remote);
-  bytes   = recvfrom(node->sock,buffer,sizeof(buffer),0,(struct sockaddr *)&remote,&remsize);
+  bytes   = recvfrom(sock->sock,buffer,sizeof(buffer),0,(struct sockaddr *)&remote,&remsize);
   
   if (bytes == -1)
   {
@@ -561,7 +560,7 @@ void event_read(struct epoll_event *ev)
     if (iscntrl(buffer[i]))
       buffer[i] = ' ';
   
-  syslog_interp(&node->local,&remote,buffer,&buffer[bytes]);
+  syslog_interp(&sock->local,&remote,buffer,&buffer[bytes]);
 }
 
 /*********************************************************************/
@@ -883,17 +882,9 @@ Status globalv_init(int argc,char *argv[])
   assert(argv != NULL);
   
   openlog(basename(argv[0]),0,LOG_SYSLOG);
-
-  g_ipv4.sock  = -1;
-  g_ipv6.sock  = -1;
-  g_local.sock = -1;
   
   for (size_t i = 0 ; i < MAX_SOCKETS; i++)
     g_sockets[i].sock = -1;
-  
-  g_queue = epoll_create(MAX_EVENTS);
-  if (g_queue == -1)
-    return retstatus(false,errno,"epoll_create()");
 
   opterr = 0;	/* prevent getopt_long_only() from printing error message */
   
@@ -914,13 +905,11 @@ Status globalv_init(int argc,char *argv[])
            if (!status.okay) return status;
            break;
       case OPT_LOCAL:
-           status = local_socket(&g_local,LOG_LOCAL);
+           status = local_socket(LOG_LOCAL);
            if (!status.okay) return status;
            break;
       case OPT_SOCKET:
-           if (g_maxsocket == MAX_SOCKETS)
-             return retstatus(false,EADDRNOTAVAIL,"globalv_init()");
-           status = local_socket(&g_sockets[g_maxsocket++],optarg);
+           status = local_socket(optarg);
            if (!status.okay) return status;
            break;
       case OPT_USER:
@@ -986,7 +975,7 @@ void usage(const char *progname)
         "\t--help                    this message\n"
         "\n",
         progname,
-        MAX_SOCKETS
+        MAX_SOCKETS - 3		/* possible IPv4, IPv6 and default local */
   );
 }
 
@@ -1021,15 +1010,23 @@ Status drop_privs(void)
   else
     ginfo.gr_gid = uinfo.pw_gid;
   
-  /*-------------------------------------------------
-  ; it's here we change the ownership of the PID file.
-  ; I don't care about the return value, as it may not
-  ; even exist (because we might not have had perms to
-  ; create it in the first place.
-  ;--------------------------------------------------*/
+  /*------------------------------------------------------------------------
+  ; it's here we change the ownership of the PID file and any unix sockets. 
+  ; I don't care about the return value, as it may not even exist (because
+  ; we might not have had perms to create it in the first place.
+  ;------------------------------------------------------------------------*/
   
   chown(PID_FILE,uinfo.pw_uid,ginfo.gr_gid);	/* don't care about results */
 
+  for (size_t i = 0 ; i < g_maxsocket ; i++)
+    if (g_sockets[i].local.ss.sa_family == AF_LOCAL)
+      chown(g_sockets[i].local.sun.sun_path,uinfo.pw_uid,ginfo.gr_gid);
+
+  /*-------------------------------------------------------------------
+  ; change our group id first, then user id.  If we drop user id first,
+  ; we may not be able to change our group id!
+  ;-------------------------------------------------------------------*/
+  
   if (setgid(ginfo.gr_gid) == -1)
     return retstatus(false,errno,"setgid()");
   
@@ -1426,16 +1423,16 @@ int syslogintr_relay(lua_State *L)
     output[size] = '\0';
   }
   
-  if ((paddr->ss.sa_family == AF_INET) && (g_ipv4.sock > -1))
+  if ((paddr->ss.sa_family == AF_INET) && (g_sockets[g_ipv4].sock > -1))
   {
-    assert(g_ipv4.local.sin.sin_family == AF_INET);
-    if (sendto(g_ipv4.sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
+    assert(g_sockets[g_ipv4].local.sin.sin_family == AF_INET);
+    if (sendto(g_sockets[g_ipv4].sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
       syslog(LOG_ERR,"sendto(ipv4) = %s",strerror(errno));
   }
-  else if ((paddr->ss.sa_family == AF_INET6) && (g_ipv6.sock > -1))
+  else if ((paddr->ss.sa_family == AF_INET6) && (g_sockets[g_ipv6].sock > -1))
   {
-    assert(g_ipv6.local.sin6.sin6_family == AF_INET6);
-    if (sendto(g_ipv6.sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
+    assert(g_sockets[g_ipv6].local.sin6.sin6_family == AF_INET6);
+    if (sendto(g_sockets[g_ipv6].sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
       syslog(LOG_ERR,"sendto(ipv6) = %s",strerror(errno));
   }
   else
