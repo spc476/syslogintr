@@ -506,7 +506,7 @@ Status local_socket(const char *name)
 Status create_socket(SocketNode listen,socklen_t saddr)
 {
   int reuse = 1;
-  int rc;
+  int flag;
 
   assert(listen != NULL);  
   assert(saddr  >  0);
@@ -516,11 +516,11 @@ Status create_socket(SocketNode listen,socklen_t saddr)
   if (setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse)) == -1)
     return retstatus(false,errno,"setsockopt()");
 
-  rc = fcntl(listen->sock,F_GETFL,0);
-  if (rc == -1)
+  flag = fcntl(listen->sock,F_GETFL,0);
+  if (flag == -1)
     return retstatus(false,errno,"fcntl(GETFL)");
   
-  if (fcntl(listen->sock,F_SETFL,rc | O_NONBLOCK) == -1)
+  if (fcntl(listen->sock,F_SETFL,flag | O_NONBLOCK) == -1)
     return retstatus(false,errno,"fcntl(SETFL)");
 
   if (bind(listen->sock,&listen->local.ss,saddr) == -1)
