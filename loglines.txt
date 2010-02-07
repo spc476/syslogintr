@@ -1,0 +1,73 @@
+
+# really malformed messages, taken from 
+# http://www.rsyslog.com/doc-syslog_parsing.html
+
+<164>May 21 2008 10:50:11: %FWSM-4-106023: Deny udp src outside:123.123.123.123/1985 dst inside:224.0.0.2/1985 by access-group "outside_access_in" [0x0, 0x0]
+<130> [ERROR] iapp_socket_task.c 399: iappSocketTask: iappRecvPkt returned error
+<130> [ERROR] host.example.net 2008-09-23 11-40-22 PST iapp_socket_task.c 399: iappSocketTask: iappRecvPkt returned error
+
+# test cases taken from rsyslogd distribution
+
+<167>Mar  6 16:57:54 172.20.245.8 %PIX-7-710005: DROP_url_www.sina.com.cn:IN=eth1 OUT=eth0 SRC=192.168.10.78 DST=61.172.201.194 LEN=1182 TOS=0x00 PREC=0x00 TTL=63 ID=14368 DF PROTO=TCP SPT=33343 DPT=80 WINDOW=92 RES=0x00 ACK PSH URGP=0
+<167>Mar  6 16:57:54 172.20.245.8 %PIX-7-710005: MSG
+<167>Mar  6 16:57:54 172.20.245.8 %PIX-7-710005: MSG
+<167>Mar  6 16:57:54 172.20.245.8 %PIX-7-710005: MSG
+<167>Mar  6 16:57:54 172.20.245.8 %PIX-7-710005: UDP request discarded from SERVER1/2741 to test_app:255.255.255.255/61601
+<167>Mar  6 16:57:54 172.20.245.8 %PIX-7-710005: UDP request discarded from SERVER1/2741 to test_app:255.255.255.255/61601
+<167>Mar  6 16:57:54 172.20.245.8 test: before HT	after HT (do NOT remove TAB!)
+<167>Mar  6 16:57:54 172.20.245.8 test: before HT	after HT (do NOT remove TAB!)
+<38>Mar 27 19:06:53 source_server sshd(pam_unix)[12750]: session opened for user foo by (uid=0)
+<38>Apr  6 15:07:10 lxcvs07 sshd(pam_unix)[31738]: session closed for user cvsadmin
+<29>Jul 31 21:39:21 example-b example-gw[10538]: disconnect host=/192.0.2.1 destination=192.0.2.2/11282 in=3274 out=1448 duration=0
+<6>AUG 10 22:18:24 host tag This msg contains 8-bit European chars: äöü
+<6>AUG 10 22:18:24 host tag This msg contains 8-bit European chars: äöü
+<167>Apr  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Aug  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Dec  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Feb  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Jan  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Jul  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Jun  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Mar  6 16:57:54 172.20.245.8 TAG: MSG
+<167>May  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Nov  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Oct  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Sep  6 16:57:54 172.20.245.8 TAG: MSG
+<38> Mar  7 19:06:53 example tag: testmessage (only date actually tested)
+<38>Mar 7 19:06:53 example tag: testmessage (only date actually tested)
+<38>Mar 7 2008 19:06:53: example tag: testmessage (only date actually tested)
+<38>Mar 7 2008 19:06:53 example tag: testmessage (only date actually tested)
+<38>Mar 7 19:06:53: example tag: testmessage (only date actually tested)
+<14>Jan  6 2009 15:22:26 localhost 
+<131>Oct  8 23:05:06 10.321.1.123 05",result_code=200,b
+<167>Mar  6 16:57:54 172.20.245.8 TAG: Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 0 Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 01234567890123456789012345678901 Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 01234567890123456789012345678901-toolong Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 TAG: Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 0 Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 01234567890123456789012345678901 Rest of message...
+<167>Mar  6 16:57:54 172.20.245.8 01234567890123456789012345678901-toolong Rest of message...
+<34>1 2003-01-23T12:34:56.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-01-23T12:34:56.123456Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-01-23T12:34:56Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-11T22:14:15.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-01-11T22:14:15.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-01T22:04:15.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-11T02:14:15.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-11T22:04:05.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-11T22:04:05.003+02:00 mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-11T22:04:05.003+01:30 mymachine.example.com su - ID47 - MSG
+<34>1 2003-11-11T22:04:05.123456+01:30 mymachine.example.com su - ID47 - MSG
+<34>1 2003-01-23T12:34:56.003Z mymachine.example.com su - ID47 - MSG
+<34>1 2003-01-23T12:34:56.003Z mymachine.example.com su - ID47 - MSG
+<167>Jan  6 16:57:54 172.20.245.8 TAG: MSG
+<167>Jan 16 16:57:54 172.20.245.8 TAG: MSG
+<38>Mar 27 19:06:53 source_server 0123456780123456780123456780123456789: MSG part
+<29>Oct 16 20:47:24 example-p exam-pl[12345]: connect host= /192.0.2.1
+<175>Oct 16 23:47:31 #001 MSWinEventLog 0#011Security#01119023582#011Fri Oct 16 16:30:44 2009#011592#011Security#011rgabcde#011User#011Success Audit#011XSXSXSN01#011Detailed Tracking#011#0112572#01119013885
+<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8
+<34>1 2003-10-11T22:14:15.003Z mymachine.example.com su - ID47 - BOM'su root' failed for lonvick on /dev/pts/8
+<165>1 2003-08-24T05:14:15.000003-07:00 192.0.2.1 myproc 8710 - - %% It's time to make the do-nuts.
+<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource= "Application" eventID="1011"][examplePriority@32473 class="high"]
+<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource= "Application" eventID="1011"] BOMAn application event log entry...
