@@ -67,7 +67,7 @@ end
 
 -- ******************************************************
 
-function log(msg)  
+function log(msg)
   writelog(msg)
   sshd(msg)
 end
