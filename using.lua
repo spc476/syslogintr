@@ -68,7 +68,18 @@ end
 -- ******************************************************
 
 function log(msg)
-  writelog(msg)
+
+  -- ====================================================
+  -- Bunny's machine is sending the hostname, which is
+  -- being interpreted as a program name.  This corrects
+  -- for that.
+  -- ====================================================
+  
+  if msg.host == '192.168.1.16' then
+    msg.program = string.match(msg.program,'^.*%s+(.*)')
+  end
+
+ writelog(msg)
   sshd(msg)
 end
 
