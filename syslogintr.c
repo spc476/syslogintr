@@ -173,9 +173,9 @@
 #endif
 
 #ifdef __SunOS
-#  define AF_LOCAL	AF_UNIX
 #  include <libgen.h>
 #  include <sys/un.h>
+#  define AF_LOCAL	AF_UNIX
 #endif
 
 /*****************************************************************/
