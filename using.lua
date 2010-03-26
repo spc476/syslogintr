@@ -29,7 +29,33 @@ if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
 end
 
+if remotehosts == nil then
+  remotehosts = {}
+  setmetatable(remotehosts,{ __index = function(t,k) return 0 end })
+end
+
 alarm("60m")
+
+-- *******************************************************
+
+function log_remotehosts()
+  local s = ""
+  
+  for name,value in pairs(remotehosts) do
+    s = s .. string.format("%s:%d ",name,value)
+    remotehosts[name] = 0
+  end
+  
+  log{
+  	host      = "(internal)",
+  	remote    = false,
+  	program   = "check/remotehosts",
+  	facility  = "syslog",
+  	level     = "info",
+  	timestamp = os.time(),
+  	msg       = s
+  }
+end
 
 -- *******************************************************
 
@@ -63,6 +89,9 @@ function alarm_handler()
     table.remove(blocked,1)
     os.execute("iptables --table filter -D INPUT 1")
   end
+  
+  log_remotehosts()
+  
 end
 
 -- ******************************************************
@@ -79,7 +108,9 @@ function log(msg)
     msg.program = string.match(msg.program,'^.*%s+(.*)')
   end
 
- writelog(msg)
+  remotehosts[msg.host] = remotehosts[msg.host] + 1
+  
+  writelog(msg)
   sshd(msg)
 end
 
@@ -160,3 +191,4 @@ end
 
 I_log("debug","reloaded " .. script)
 I_log("debug",string.format("IPs currently blocked: %d",#blocked))
+log_remotehosts()
