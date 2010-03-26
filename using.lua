@@ -64,8 +64,10 @@ function reload_signal()
     logfile:close()
     logfile = io.open("/var/log/syslog","a") or io.stdout
   end
-  
+
+  log_remotehosts()  
   I_log("debug","signal received loud and clear and reset logfile")
+
 end
 
 -- *******************************************************
