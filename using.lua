@@ -73,6 +73,8 @@ end
 -- *******************************************************
 
 function alarm_handler()
+  log_remotehosts()
+  
   I_log("debug","Alarm clock");
   if #blocked == 0 then
     I_log("debug","Alarm clock---snooze button!")
@@ -90,10 +92,7 @@ function alarm_handler()
     blocked[ip] = nil
     table.remove(blocked,1)
     os.execute("iptables --table filter -D INPUT 1")
-  end
-  
-  log_remotehosts()
-  
+  end  
 end
 
 -- ******************************************************
