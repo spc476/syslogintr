@@ -20,9 +20,15 @@
 --
 -- ********************************************************************
 
-if blocked == nil then
-  blocked = {}
-  os.execute("iptables --table filter -F INPUT")
+local load_ssh = true
+
+if load_ssh then
+  package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
+  require "ssh-iptables"
+else
+  function sshd(msg) end
+  function sshd_remove() end
+  function sshd_cleanup() end
 end
 
 if logfile == nil then
@@ -49,7 +55,7 @@ function log_remotehosts()
   log{
   	host      = "(internal)",
   	remote    = false,
-  	program   = "check/remotehosts",
+  	program   = "summary/hosts",
   	facility  = "syslog",
   	level     = "info",
   	timestamp = os.time(),
@@ -76,23 +82,7 @@ function alarm_handler()
   log_remotehosts()
   
   I_log("debug","Alarm clock");
-  if #blocked == 0 then
-    I_log("debug","Alarm clock---snooze button!")
-    return
-  end
-
-  local now = os.time()
-
-  I_log("debug",string.format("About to remove blocks (%d left)",#blocked))
-
-  while #blocked > 0 do
-    if now - blocked[1].when < 3600 then return end
-    local ip = blocked[1].ip
-    I_log("info","Removing IP block: " .. ip)      	
-    blocked[ip] = nil
-    table.remove(blocked,1)
-    os.execute("iptables --table filter -D INPUT 1")
-  end  
+  sshd_remove()
 end
 
 -- ******************************************************
@@ -118,10 +108,7 @@ end
 -- ********************************************************
 
 function cleanup()
-  for i = 1 , #blocked do
-    os.execute("iptables --table filter -D INPUT 1")
-  end
-  blocked = {}
+  sshd_cleanup()
   logfile:close()
 end
 
@@ -147,34 +134,6 @@ function log_to_file(file,msg)
 end
 
 -- ********************************************************
-
-function sshd(msg)
-  if msg.remote   == true    then return end
-  if msg.program  ~= "sshd"  then return end
-  if msg.facility ~= "auth2" then return end
-  if msg.level    ~= "info"  then return end
-
-  local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+) .*");
-  if ip == nil then return end
-
-  I_log("debug","Found IP:" .. ip)
-
-  if blocked[ip] == nil then
-    blocked[ip] = 1
-  else
-    blocked[ip] = blocked[ip] + 1
-  end
-
-  if blocked[ip] == 5 then
-    local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
-    I_log("debug","Command to block: " .. cmd)    
-    os.execute(cmd)    
-    I_log("info","Blocked " .. ip .. " from SSH")
-    table.insert(blocked,{ ip = ip , when = msg.timestamp} )
-  end
-end
-
--- *******************************************************
 
 function I_log(level,msg)
   log{

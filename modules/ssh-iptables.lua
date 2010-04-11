@@ -20,8 +20,11 @@
 --
 -- ********************************************************************
 
+require "I_log"
+
 if blocked == nil then
   blocked = {}
+  setmetatable(blocked,{ __index = function(t,k) return 0 end })
   os.execute("iptables --table filter -F INPUT")
 end
 
@@ -33,21 +36,17 @@ function sshd(msg)
   if msg.facility ~= "auth2" then return end
   if msg.level    ~= "info"  then return end
 
-  local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+)
- .*");
+  local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+).*")
   if ip == nil then return end
 
   I_log("debug","Found IP:" .. ip)
+  
+  blocked[ip] = blocked[ip] + 1
 
-  if blocked[ip] == nil then
-    blocked[ip] = 1
-  else
-    blocked[ip] = blocked[ip] + 1
-  end
-
-  if blocked[ip] == 5 then
-    local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --
-proto tcp --dport 22 --jump REJECT"
+  I_log("debug","COUNT: " .. tostring(blocked[ip]))
+  
+  if blocked[ip] >= 5 then
+    local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
     I_log("debug","Command to block: " .. cmd)    
     os.execute(cmd)    
     I_log("info","Blocked " .. ip .. " from SSH")
@@ -74,7 +73,10 @@ end
 
 function sshd_cleanup()
   blocked = {}
+  setmetatable(blocked,{ __index = function(t,k) return 0 end })
   os.execute("iptables --table filter -F INPUT")
 end
 
 -- *****************************************************************
+
+sshd_cleanup()

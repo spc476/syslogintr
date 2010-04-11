@@ -28,15 +28,20 @@
 --
 -- *******************************************************************
 
-function I_log(level,msg)
+function I_prlog(program,level,msg)
   log{
   	host      = "(internal)",
   	remote    = false,
-  	program   = "syslog/lua",
-  	facility  = "daemon",
+  	program   = program,
+  	facility  = "syslog",
   	level     = level,
   	timestamp = os.time(),
   	msg       = msg
   }
 end
 
+-- *******************************************************************
+
+function I_log(level,msg)
+  I_prlog(script,level,msg)
+end
