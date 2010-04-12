@@ -1,0 +1,7 @@
+
+2010-04-10
+
+	I think syslogintr is interfering with RedHats initlog program when
+	it is first launched during boot.  It may have something to do with
+	iptables, it may not.  I don't know.  Whatever it is, it's a nasty
+	bug.
