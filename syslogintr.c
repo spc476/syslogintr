@@ -432,7 +432,8 @@ int main(int argc,char *argv[])
   set_signal_handler(SIGUSR1,handle_signal);
   set_signal_handler(SIGHUP ,handle_signal);
   set_signal_handler(SIGALRM,handle_signal);
-
+  set_signal_handler(SIGTERM,handle_signal);
+  
   load_script();
   syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
   
@@ -1242,6 +1243,7 @@ void handle_signal(int sig)
 {
   switch(sig)
   {
+    case SIGTERM: mf_sigint   = 1; break;
     case SIGINT:  mf_sigint   = 1; break;
     case SIGUSR1: mf_sigusr1  = 1; break;
     case SIGHUP:  mf_sighup   = 1; break;
