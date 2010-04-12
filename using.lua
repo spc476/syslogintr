@@ -20,8 +20,18 @@
 --
 -- ********************************************************************
 
--- package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
--- require "ssh-iptables"
+if true then
+  if true then
+    package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
+  end
+  require "I_log"
+  require "ssh-iptables"
+else
+  function sshd(msg)	  end
+  function sshd_remove()  end
+  function sshd_cleanup() end
+  dofile "/home/spc/source/sysloginter/modules/I_log.lua"
+end
 
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
@@ -127,20 +137,6 @@ end
 
 -- ********************************************************
 
-function I_log(level,msg)
-  log{
-  	host      = "(internal)",
-  	remote    = false,
-  	program   = script,
-  	facility  = "syslog",
-  	level     = level,
-  	timestamp = os.time(),
-  	msg       = msg
-  }
-end
-
--- ******************************************************
-
 I_log("debug","reloaded " .. script)
-I_log("debug",string.format("IPs currently blocked: %d",#blocked))
 log_remotehosts()
+

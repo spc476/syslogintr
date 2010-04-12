@@ -43,8 +43,6 @@ function sshd(msg)
   
   blocked[ip] = blocked[ip] + 1
 
-  I_log("debug","COUNT: " .. tostring(blocked[ip]))
-  
   if blocked[ip] >= 5 then
     local cmd = "iptables --table filter --append INPUT --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
     I_log("debug","Command to block: " .. cmd)    
@@ -66,6 +64,10 @@ function sshd_remove()
     blocked[ip] = nil
     table.remove(blocked,1)
     os.execute("iptables --table filter -D INPUT 1")
+  end
+  
+  if #blocked > 0 then
+    I_log("debug",string.format("%d still blocked",#blocked))
   end
 end
 
