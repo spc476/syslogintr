@@ -488,7 +488,21 @@ int main(int argc,char *argv[])
   }
   
   unlink(PID_FILE);	/* don't care if this succeeds or not */
-  return EXIT_SUCCESS;
+  
+  /*------------------------------------------------------------------------
+  ; Per http://www.cons.org/cracauer/sigint.html, the only proper way to
+  ; exit a program that has received a SIGINT (or SIGQUIT) is to actually
+  ; use the default action of SIGINT (or SIGQUIT) so that the calling
+  ; program can detect that the child process (in this case, us) actually
+  ; received a signal.  So that's why we set the default handler for SIGINT
+  ; and kill ourselves, since the only way we get here is via SIGINT (or
+  ; possibly SIGQUIT if/when I add logic for that).
+  ;------------------------------------------------------------------------*/
+  
+  set_signal_handler(SIGINT,SIG_DFL);
+  kill(getpid(),SIGINT);
+  
+  return EXIT_SUCCESS;	/* keep this around to silence the compilers */
 }
 
 /*************************************************************/
