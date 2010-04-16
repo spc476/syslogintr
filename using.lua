@@ -20,20 +20,15 @@
 --
 -- ********************************************************************
 
-if true then
-  package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
+syslogmodules = "/home/spc/source/sysloginter/modules/?.lua;"
+
+if not string.match(package.path,syslogmodules) then
+  package.path = syslogmodules .. package.path
 end
 
 require "I_log"
 require "hostcounts"
-
-if true then
-  require "ssh-iptables"
-else
-  function sshd(msg)	  end
-  function sshd_remove()  end
-  function sshd_cleanup() end
-end
+require "ssh-iptables"
 
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
@@ -86,6 +81,7 @@ end
 -- ********************************************************
 
 function cleanup()
+  I_log("debug","shutting down ... ")
   sshd_cleanup()
   logfile:close()
 end
