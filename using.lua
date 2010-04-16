@@ -20,7 +20,7 @@
 --
 -- ********************************************************************
 
-if false then
+if true then
   package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
 end
 
@@ -35,39 +35,11 @@ else
   function sshd_cleanup() end
 end
 
-I_log("debug",package.path)
-
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
 end
 
-if remotehosts == nil then
-  remotehosts = {}
-  setmetatable(remotehosts,{ __index = function(t,k) return 0 end })
-end
-
 alarm("60m")
-
--- *******************************************************
-
-function log_remotehosts()
-  local s = ""
-  
-  for name,value in pairs(remotehosts) do
-    s = s .. string.format("%s:%d ",name,value)
-    remotehosts[name] = 0
-  end
-  
-  log{
-  	host      = "(internal)",
-  	remote    = false,
-  	program   = "summary/hosts",
-  	facility  = "syslog",
-  	level     = "info",
-  	timestamp = os.time(),
-  	msg       = s
-  }
-end
 
 -- *******************************************************
 
@@ -78,7 +50,7 @@ function reload_signal()
     logfile = io.open("/var/log/syslog","a") or io.stdout
   end
 
-  log_remotehosts()  
+  log_hostcounts()  
   I_log("debug","signal received loud and clear and reset logfile")
 
 end
@@ -86,8 +58,8 @@ end
 -- *******************************************************
 
 function alarm_handler()
-  log_remotehosts()  
   I_log("debug","Alarm clock");
+  log_hostcounts()
   sshd_remove()
 end
 
@@ -105,7 +77,7 @@ function log(msg)
     msg.program = string.match(msg.program,'^.*%s+(.*)')
   end
 
-  remotehosts[msg.host] = remotehosts[msg.host] + 1
+  inc_hostcount(msg.host)
   
   log_to_file(logfile,msg)
   sshd(msg)
@@ -135,6 +107,6 @@ end
 
 -- ********************************************************
 
+I_log("debug",package.path)
 I_log("debug","reloaded " .. script)
-log_remotehosts()
-
+log_hostcounts()
