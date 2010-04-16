@@ -20,18 +20,22 @@
 --
 -- ********************************************************************
 
+if false then
+  package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
+end
+
+require "I_log"
+require "hostcounts"
+
 if true then
-  if true then
-    package.path = "/home/spc/source/sysloginter/modules/?.lua;" .. package.path
-  end
-  require "I_log"
   require "ssh-iptables"
 else
   function sshd(msg)	  end
   function sshd_remove()  end
   function sshd_cleanup() end
-  dofile "/home/spc/source/sysloginter/modules/I_log.lua"
 end
+
+I_log("debug",package.path)
 
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
@@ -68,6 +72,7 @@ end
 -- *******************************************************
 
 function reload_signal()
+
   if logfile ~= io.stdout then
     logfile:close()
     logfile = io.open("/var/log/syslog","a") or io.stdout
@@ -81,8 +86,7 @@ end
 -- *******************************************************
 
 function alarm_handler()
-  log_remotehosts()
-  
+  log_remotehosts()  
   I_log("debug","Alarm clock");
   sshd_remove()
 end
@@ -103,7 +107,7 @@ function log(msg)
 
   remotehosts[msg.host] = remotehosts[msg.host] + 1
   
-  writelog(msg)
+  log_to_file(logfile,msg)
   sshd(msg)
 end
 
@@ -115,12 +119,6 @@ function cleanup()
 end
 
 -- *******************************************************
-
-function writelog(msg)
-  log_to_file(logfile,msg)
-end
-
--- ******************************************************
 
 function log_to_file(file,msg)
   file:write(string.format(
