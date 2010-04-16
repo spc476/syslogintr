@@ -20,9 +20,16 @@
 --
 -- ********************************************************************
 
+	-- ==============================================
+	-- this whole business with syslogmodules and
+	-- package.path isn't working.  I think I may 
+	-- need to modify package.path in the C code
+	-- as other people may find this desirable ... 
+	-- ==============================================
+	
 syslogmodules = "/home/spc/source/sysloginter/modules/?.lua;"
 
-if not string.match(package.path,syslogmodules) then
+if not string.find(package.path,syslogmodules) then
   package.path = syslogmodules .. package.path
 end
 
@@ -72,8 +79,7 @@ function log(msg)
     msg.program = string.match(msg.program,'^.*%s+(.*)')
   end
 
-  inc_hostcount(msg.host)
-  
+  inc_hostcount(msg.host)  
   log_to_file(logfile,msg)
   sshd(msg)
 end
