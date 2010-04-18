@@ -109,6 +109,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdarg.h>
 
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -122,8 +123,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <signal.h>
 #include <syslog.h>
+#include <signal.h>
 #include <pwd.h>
 #include <grp.h>
 #include <getopt.h>
@@ -221,8 +222,22 @@ struct sysstring
   const char *text;
 };
 
+typedef struct node
+{
+  struct node *ln_Succ;
+  struct node *ln_Pred;
+} Node;
+
+typedef struct list
+{
+  struct node *lh_Head;
+  struct node *lh_Tail;
+  struct node *lh_TailPred;
+} List;
+
 struct msg
 {
+  Node             node;	  /* used to internally queue log msgs	*/
   int              version;	  /* syslog version---RFC3164=0		*/
   struct sysstring raw;		  /* raw message (debugging purposes)	*/
   struct sysstring host;	  /* address of original sending host	*/
@@ -240,28 +255,66 @@ struct msg
 
 /******************************************************************/
 
-Status		ipv4_socket		(void);
-Status		ipv6_socket		(void);
-Status		local_socket		(const char *);
-Status		create_socket		(SocketNode,socklen_t);
-void		event_read		(SocketNode);
-void		syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
-void		process_msg		(const struct msg *const);
-Status		globalv_init		(int,char *[]);
-void		usage			(const char *);
-Status		drop_privs		(void);
-Status		daemon_init		(void);
-void		load_script		(void);
-int		map_str_to_int		(const char *,const char *const [],size_t);
-void		handle_signal		(int);
-Status		set_signal_handler	(int,void (*)(int));
-int		syslogintr_alarm	(lua_State *);
-int		syslogintr_ud__toprint	(lua_State *);
-int		syslogintr_host		(lua_State *);
-int		syslogintr_relay	(lua_State *);
-void		call_optional_luaf	(const char *);
+Status		 ipv4_socket		(void);
+Status		 ipv6_socket		(void);
+Status		 local_socket		(const char *);
+Status		 create_socket		(SocketNode,socklen_t);
+void		 event_read		(SocketNode);
+void		 syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
+void		 process_msg		(const struct msg *const);
+Status		 globalv_init		(int,char *[]);
+void		 usage			(const char *);
+Status		 drop_privs		(void);
+Status		 daemon_init		(void);
+void		 load_script		(void);
+int		 map_str_to_int		(const char *,const char *const [],size_t);
+void		 handle_signal		(int);
+Status		 set_signal_handler	(int,void (*)(int));
+int		 syslogintr_alarm	(lua_State *);
+int		 syslogintr_ud__toprint	(lua_State *);
+int		 syslogintr_host	(lua_State *);
+int		 syslogintr_relay	(lua_State *);
+void		 call_optional_luaf	(const char *);
+void		 internal_log		(int,const char *,...);
+Node		*ListRemHead		(List *const);
+void		 NodeInsert		(Node *const,Node *const);
+void		 NodeRemove		(Node *const);
 
 /******************************************************************/
+
+static inline void ListInit(List *const pl)
+{
+  assert(pl != NULL);
+  
+  pl->lh_Head     = (Node *)&pl->lh_Tail;
+  pl->lh_Tail     = NULL;
+  pl->lh_TailPred = (Node *)&pl->lh_Head;
+}
+
+static inline void ListAddTail(List *const pl,Node *const pn)
+{
+  assert(pl != NULL);
+  assert(pn != NULL);
+  
+  NodeInsert(pl->lh_TailPred,pn);
+}
+
+static inline Node *ListGetHead(List *const pl)
+{
+  assert(pl          != NULL);
+  assert(pl->lh_Head != NULL);
+  
+  return pl->lh_Head;
+}
+
+static inline bool NodeValid(Node *const pn)
+{
+  assert(pn != NULL);
+  
+  if (pn->ln_Succ == NULL) return false;
+  if (pn->ln_Pred == NULL) return false;
+  return true;
+}
 
 static inline Status retstatus(bool okay,int err,char *msg)
 {
@@ -291,6 +344,8 @@ struct socket_node   g_sockets[MAX_SOCKETS];
 size_t               g_maxsocket;
 size_t               g_ipv4;
 size_t               g_ipv6;
+struct sysstring     g_logtag;
+List                 g_intlog;
 
 const struct option c_options [] =
 {
@@ -376,7 +431,7 @@ int main(int argc,char *argv[])
     status = daemon_init();
     if (!status.okay)
     {
-      /*syslog(LOG_ERR,"daemon_init() = %s",status.msg);*/
+      internal_log(LOG_ERR,"daemon_init() = %s",status.msg);
       perror(status.msg);
       return EXIT_FAILURE;
     }
@@ -392,7 +447,7 @@ int main(int argc,char *argv[])
   status = drop_privs();
   if (!status.okay)
   {
-    /*syslog(LOG_ERR,"drop_privs() = %s",status.msg);*/
+    internal_log(LOG_ERR,"drop_privs() = %s",status.msg);
     perror(status.msg);
     return EXIT_FAILURE;
   }
@@ -435,7 +490,7 @@ int main(int argc,char *argv[])
   set_signal_handler(SIGTERM,handle_signal);
   
   load_script();
-  /*syslog(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());*/
+  internal_log(LOG_DEBUG,"PID: %lu",(unsigned long)getpid());
   
   struct pollfd events[g_maxsocket];
   
@@ -466,6 +521,27 @@ int main(int argc,char *argv[])
       mf_sigalarm = 0;
       call_optional_luaf("alarm_handler");
     }
+    
+    /*--------------------------------------------------------------------
+    ; check for any locally queued messages, and pass them all along.  Don't
+    ; forget to clean up afterwards.
+    ;---------------------------------------------------------------------*/
+    
+    for (
+          struct msg *msg = (struct msg *)ListRemHead(&g_intlog);
+          NodeValid(&msg->node);
+          msg = (struct msg *)ListRemHead(&g_intlog)
+        )
+    {
+      process_msg(msg);
+      assert(msg->raw.text == msg->msg.text);
+      free((void *)msg->raw.text);
+      free(msg);
+    }
+    
+    /*---------------------------------------------------------------
+    ; now check for any requests outside of ourselves
+    ;-------------------------------------------------------------*/
     
     if (poll(events,g_maxsocket,-1) < 1)
       continue;	/* continue on errors and timeouts */
@@ -609,7 +685,7 @@ void event_read(SocketNode sock)
   if (bytes == -1)
   {
     if (errno == EINTR) return;
-    /*syslog(LOG_DEBUG,"recvfrom() = %s",strerror(errno));*/
+    internal_log(LOG_DEBUG,"recvfrom() = %s",strerror(errno));
     return;
   }
   
@@ -927,7 +1003,7 @@ void process_msg(const struct msg *const pmsg)
   if (rc != 0)
   {
     err = lua_tostring(g_L,1);
-    /*syslog(LOG_ERR,"Lua ERROR(%d): %s",rc,err);*/
+    internal_log(LOG_ERR,"Lua ERROR(%d): %s",rc,err);
     lua_pop(g_L,1);
   }
 }
@@ -943,7 +1019,9 @@ Status globalv_init(int argc,char *argv[])
   assert(argc >  0);
   assert(argv != NULL);
   
-  openlog(basename(argv[0]),0,LOG_SYSLOG);
+  ListInit(&g_intlog);
+  g_logtag.text = basename(argv[0]);
+  g_logtag.size = strlen(g_logtag.text);
   
   for (size_t i = 0 ; i < MAX_SOCKETS; i++)
     g_sockets[i].sock = -1;
@@ -1099,7 +1177,7 @@ Status drop_privs(void)
   if (setuid(uinfo.pw_uid) == -1)
     return retstatus(false,errno,"getuid()");
   
-  /*syslog(LOG_DEBUG,"dropped privs to %s:%s",g_user,g_group);*/
+  internal_log(LOG_DEBUG,"dropped privs to %s:%s",g_user,g_group);
   return c_okay;
 }
 
@@ -1113,7 +1191,7 @@ void load_script(void)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    /*syslog(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);*/
+    internal_log(LOG_DEBUG,"Lua ERROR: (%d) %s",rc,err);
     lua_pop(g_L,1);
     return;
   }
@@ -1122,12 +1200,12 @@ void load_script(void)
   if (rc != 0)
   {
     const char *err = lua_tostring(g_L,1);
-    /*syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);*/
+    internal_log(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
     lua_pop(g_L,1);
     return;
   }
   
-  /*syslog(LOG_DEBUG,"loaded script %s\n",g_luacode);*/
+  internal_log(LOG_DEBUG,"loaded script %s",g_luacode);
 }
 
 /*************************************************************************/
@@ -1319,15 +1397,14 @@ int syslogintr_alarm(lua_State *L)
   else
     return luaL_error(L,"expected number or string");
 
-  /*syslog(LOG_DEBUG,"Alarm PID: %lu",(unsigned long)getpid());*/
-  /*syslog(LOG_DEBUG,"Alarm set for %d seconds\n",g_alarm);*/
+  internal_log(LOG_DEBUG,"Alarm PID: %lu",(unsigned long)getpid());
+  internal_log(LOG_DEBUG,"Alarm set for %d seconds",g_alarm);
   
   set.it_value.tv_sec  = set.it_interval.tv_sec  = g_alarm;
   set.it_value.tv_usec = set.it_interval.tv_usec = 0;
   
   if (setitimer(ITIMER_REAL,&set,NULL) == -1)
-    /*syslog(LOG_WARNING,"setitimer() = %s",strerror(errno));*/
-    (void)1;
+    internal_log(LOG_WARNING,"setitimer() = %s",strerror(errno));
   
   lua_pop(L,1);
   return 0;
@@ -1391,7 +1468,7 @@ int syslogintr_host(lua_State *L)
   rc = getaddrinfo(hostname,"514",&hints,&results);
   if (rc != 0)
   {
-    /*syslog(LOG_WARNING,"getaddrinfo(%s) = %s",hostname,strerror(errno));*/
+    internal_log(LOG_WARNING,"getaddrinfo(%s) = %s",hostname,strerror(errno));
     lua_pushnil(L);
     return 1;
   }
@@ -1401,7 +1478,7 @@ int syslogintr_host(lua_State *L)
     case AF_INET:  size = sizeof(struct sockaddr_in);  break;
     case AF_INET6: size = sizeof(struct sockaddr_in6); break;
     default: 
-         /*syslog(LOG_WARNING,"unexpected family for address");*/
+         internal_log(LOG_WARNING,"unexpected family for address");
          freeaddrinfo(results);
          lua_pushnil(L);
          return 1;
@@ -1495,18 +1572,16 @@ int syslogintr_relay(lua_State *L)
   {
     assert(g_sockets[g_ipv4].local.sin.sin_family == AF_INET);
     if (sendto(g_sockets[g_ipv4].sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
-      /*syslog(LOG_ERR,"sendto(ipv4) = %s",strerror(errno));*/
-      (void)1;
+      internal_log(LOG_ERR,"sendto(ipv4) = %s",strerror(errno));
   }
   else if ((paddr->ss.sa_family == AF_INET6) && (g_sockets[g_ipv6].sock > -1))
   {
     assert(g_sockets[g_ipv6].local.sin6.sin6_family == AF_INET6);
     if (sendto(g_sockets[g_ipv6].sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
-      /*syslog(LOG_ERR,"sendto(ipv6) = %s",strerror(errno));*/
-      (void)1;
+      internal_log(LOG_ERR,"sendto(ipv6) = %s",strerror(errno));
   }
   else
-    /*syslog(LOG_ERR,"can't relay---improper socket type");*/
+    internal_log(LOG_ERR,"can't relay---improper socket type");
 
   /*----------------------------------------------------------------
   ; pop after we've used the data from Lua.  Since Lua does
@@ -1530,16 +1605,112 @@ void call_optional_luaf(const char *fname)
     if (rc != 0)
     {
       const char *err = lua_tostring(g_L,1);
-      /*syslog(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);*/
+      internal_log(LOG_ERR,"Lua ERROR: (%d) %s",rc,err);
       lua_pop(g_L,1);
     }
   }
   else if (!lua_isnil(g_L,-1))
   {
-    /*syslog(LOG_WARNING,"%s is type '%s' not type 'function'",fname,lua_typename(g_L,lua_type(g_L,1)));*/
+    internal_log(LOG_WARNING,"%s is type '%s' not type 'function'",fname,lua_typename(g_L,lua_type(g_L,1)));
     lua_pop(g_L,1);
   }
 }
 
 /**********************************************************************/
 
+void internal_log(int priority,const char *format, ... )
+{
+  va_list     args;
+  char       *buffer;
+  struct msg *msg;
+  int         size;
+  
+  assert(priority >  -1);	/* min priority is 0	*/
+  assert(priority <   8);	/* max priority level	*/
+  assert(format   != NULL);
+  
+  buffer = malloc(BUFSIZ);
+  if (buffer == NULL)
+    return;
+    
+  msg = malloc(sizeof(struct msg));
+  if (msg == NULL)
+  {
+    free(buffer);
+    return;
+  }
+  
+  va_start(args,format);
+  size = vsnprintf(buffer,BUFSIZ,format,args);
+  va_end(args);
+  
+  msg->version      = 0;
+  msg->raw.size     = size;
+  msg->raw.text     = buffer;
+  msg->timestamp    = time(NULL);
+  msg->logtimestamp = msg->timestamp;
+  msg->program      = g_logtag;
+  msg->relay        = c_null;
+  msg->pid          = 0;
+  msg->remote       = false;
+  msg->host.text    = "(internal)";
+  msg->host.size    = 10; /* yeah, I know ... */
+  msg->port         = -1;
+  msg->facility     =  5; /* LOG_SYSLOG --- see comment in syslog_interp() */
+  msg->level        = priority;
+  msg->msg.text     = buffer;
+  msg->msg.size     = size;
+  
+  ListAddTail(&g_intlog,&msg->node);
+}
+
+/*************************************************************************/
+
+Node *ListRemHead(List *const pl)
+{
+  Node *pn;
+  
+  assert(pl != NULL);
+  
+  pn = ListGetHead(pl);
+  assert(pn != NULL);
+  if (NodeValid(pn))
+    NodeRemove(pn);
+  return pn;
+}
+
+/*************************************************************************/
+
+void NodeInsert(Node *const pn,Node *const pntoa)
+{
+  Node *pnn;
+  
+  assert(pn    != NULL);
+  assert(pntoa != NULL);
+  
+  pnn            = pn->ln_Succ;
+  pntoa->ln_Succ = pnn;
+  pntoa->ln_Pred = pn;
+  pn->ln_Succ    = pntoa;
+  pnn->ln_Pred   = pntoa;
+}
+
+/************************************************************************/
+
+void NodeRemove(Node *const pn)
+{
+  Node *pns;
+  Node *pnp;
+  
+  assert(pn != NULL);
+  assert(pn->ln_Succ != NULL);
+  assert(pn->ln_Pred != NULL);
+  
+  pns = pn->ln_Succ;
+  pnp = pn->ln_Pred;
+  
+  pns->ln_Pred = pnp;
+  pnp->ln_Succ = pns;
+}
+
+/************************************************************************/
