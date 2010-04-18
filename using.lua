@@ -36,9 +36,6 @@ end
 require "I_log"
 require "hostcounts"
 require "ssh-iptables"
---function sshd(msg) end
---function sshd_remove() end
---function sshd_cleanup() end
 
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
