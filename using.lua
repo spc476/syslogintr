@@ -20,19 +20,6 @@
 --
 -- ********************************************************************
 
-	-- ==============================================
-	-- this whole business with syslogmodules and
-	-- package.path isn't working.  I think I may 
-	-- need to modify package.path in the C code
-	-- as other people may find this desirable ... 
-	-- ==============================================
-	
-syslogmodules = "/home/spc/source/sysloginter/modules/?.lua;"
-
-if not string.find(package.path,syslogmodules) then
-  package.path = syslogmodules .. package.path
-end
-
 require "I_log"
 require "hostcounts"
 require "ssh-iptables"
@@ -109,6 +96,6 @@ end
 
 -- ********************************************************
 
-I_log("debug",package.path)
+I_log("debug","path:  " .. package.path)
 I_log("debug","reloaded " .. script)
 log_hostcounts()
