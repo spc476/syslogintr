@@ -438,7 +438,6 @@ int main(int argc,char *argv[])
     status = daemon_init();
     if (!status.okay)
     {
-      internal_log(LOG_ERR,"daemon_init() = %s",status.msg);
       perror(status.msg);
       return EXIT_FAILURE;
     }
@@ -454,7 +453,6 @@ int main(int argc,char *argv[])
   status = drop_privs();
   if (!status.okay)
   {
-    internal_log(LOG_ERR,"drop_privs() = %s",status.msg);
     perror(status.msg);
     return EXIT_FAILURE;
   }
