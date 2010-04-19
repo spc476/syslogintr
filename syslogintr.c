@@ -191,6 +191,8 @@ enum
   OPT_LOCAL	= 'l',
   OPT_SOCKET	= 's',
   OPT_FG	= 'f',
+  OPT_PATH	= 'p',
+  OPT_CPATH	= 'c',
   OPT_HELP	= 'h'
 };
 
@@ -279,6 +281,7 @@ void		 internal_log		(int,const char *,...);
 Node		*ListRemHead		(List *const);
 void		 NodeInsert		(Node *const,Node *const);
 void		 NodeRemove		(Node *const);
+void		 add_lua_path		(const char *,const char *);
 
 /******************************************************************/
 
@@ -338,6 +341,8 @@ unsigned int         g_alarm;
 const char          *g_luacode     = LUA_CODE;
 const char          *g_user;
 const char          *g_group;
+const char          *g_lpath;
+const char          *g_lcpath;
 int                  gf_foreground;
 lua_State           *g_L;
 struct socket_node   g_sockets[MAX_SOCKETS];
@@ -359,6 +364,8 @@ const struct option c_options [] =
   { "socket"	   , required_argument , NULL		, OPT_SOCKET	} ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
   { "group"        , required_argument , NULL           , OPT_GROUP     } ,
+  { "lua-path"	   , required_argument , NULL		, OPT_PATH	} ,
+  { "lua-cpath"    , required_argument , NULL		, OPT_CPATH	} ,
   { "help"         , no_argument       , NULL           , OPT_HELP      } ,
   { NULL           , 0                 , NULL           , 0             }
 };
@@ -482,6 +489,12 @@ int main(int argc,char *argv[])
   lua_pushcfunction(g_L,syslogintr_ud__toprint);
   lua_settable(g_L,-3);
   lua_pop(g_L,1);
+  
+  if (g_lpath)
+    add_lua_path("path",g_lpath);
+  
+  if (g_lcpath)
+    add_lua_path("cpath",g_lcpath);
 
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
@@ -1030,7 +1043,7 @@ Status globalv_init(int argc,char *argv[])
   
   while(true)
   {
-    switch(getopt_long(argc,argv,"f46lhu:g:s:",c_options,&option))
+    switch(getopt_long(argc,argv,"f46lhu:g:s:p:c:",c_options,&option))
     {
       default:
       case OPT_HELP:
@@ -1062,6 +1075,12 @@ Status globalv_init(int argc,char *argv[])
            break;
       case OPT_GROUP:
            g_group = optarg;
+           break;
+      case OPT_PATH:
+           g_lpath = optarg;
+           break;
+      case OPT_CPATH:
+           g_lcpath = optarg;
            break;
       case EOF:
            if (optind < argc)
@@ -1114,6 +1133,8 @@ void usage(const char *progname)
         "\t-f | --foreground               run in foreground\n"
         "\t-u | --user  <username>         user to run as (no default)\n"
         "\t-g | --group <groupname>        group to run as (no default)\n"
+        "\t-p | --lua-path <path>          add path to Lua package.path\n"
+        "\t-c | --lua-cpath <path>         add path to Lua package.cpath\n"
         "\t-h | --help                     this message\n"
         "\n"
         "\t" LUA_CODE "\tdefault luafile\n"
@@ -1714,3 +1735,22 @@ void NodeRemove(Node *const pn)
 }
 
 /************************************************************************/
+
+void add_lua_path(const char *name,const char *path)
+{
+  const char *currentpath;
+  
+  assert(name != NULL);
+  assert(path != NULL);
+  
+  lua_getglobal(g_L,"package");
+  lua_getfield(g_L,1,name);
+  currentpath = lua_tostring(g_L,-1);
+  lua_pop(g_L,1);
+  
+  lua_pushfstring(g_L,"%s;%s",path,currentpath);
+  lua_setfield(g_L,1,name);
+  lua_pop(g_L,1);
+}
+
+/*************************************************************************/
