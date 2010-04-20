@@ -65,6 +65,15 @@ function log(msg)
   if msg.host == '192.168.1.16' then
     msg.program = string.match(msg.program,'^.*%s+(.*)')
   end
+  
+  -- =====================================================
+  -- I need the PID from the UPS drivers, so check for that
+  -- and add to the msg
+  -- =====================================================
+  
+  if msg.program == 'usbhid-ups' then
+    msg.msg = string.format("pid = %d , %s",msg.pid,msg.msg)
+  end
 
   inc_hostcount(msg.host)  
   log_to_file(logfile,msg)
