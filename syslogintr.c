@@ -1152,7 +1152,9 @@ Status drop_privs(void)
   if (getuid() != 0)	/* if not root, we can't drop privs */
     return c_okay;
 
-  long           ubufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+  long ubufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (ubufsize < 0) ubufsize = BUFSIZ;
+    
   char           ubuffer[ubufsize];
   struct passwd  uinfo;
   struct passwd *uresult;
@@ -1160,7 +1162,9 @@ Status drop_privs(void)
   if (getpwnam_r(g_user,&uinfo,ubuffer,ubufsize,&uresult) != 0)
     return retstatus(false,errno,"getpwnam_r()");
   
-  long          gbufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+  long gbufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (gbufsize < 0) gbufsize = BUFSIZ;
+  
   char          gbuffer[gbufsize];
   struct group  ginfo;
   struct group *gresult;
