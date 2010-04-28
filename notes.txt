@@ -1,0 +1,112 @@
+https://lists.balabit.hu/pipermail/syslog-ng/2006-March/008633.html
+
+[syslog-ng] multicast support
+Alexander Clouter ac56 at soas.ac.uk
+Tue Mar 28 13:22:30 CEST 2006
+
+    * Previous message: [syslog-ng] error moessage when upgrading to 1.9.9 on Debian Unstable
+    * Next message: [syslog-ng] multicast support
+    * Messages sorted by: [ date ] [ thread ] [ subject ] [ author ]
+
+Hi,
+
+I dug around for ages and could not find any hint of multicast support in 
+syslog-ng so I decided to throw a patch together.  Its a Works For Me(tm) job 
+and took a little longer than I was expecting but hopefully others will find 
+it useful.
+
+It applies to a 1.9.9 tree and should just work.  I have not tested the IPv6 
+support but I cannot see a reason why it would not work, unless I have 
+borked up my struct's :)
+
+Let me know what you think, I wrote this patch to make clustering logging 
+servers dead easy and straight forward....I hope its useful to someone else 
+too.
+
+The only improvement I can think of is adding a multicast 'drop membership' 
+occurance, however I could not see a nice simple place to do this; it should 
+be before the socket closes.
+
+Cheers
+
+Alex
+-------------- next part --------------
+Only in syslog-ng-1.9.9/src: .deps
+diff -u syslog-ng-1.9.9.orig/src/gsockaddr.c syslog-ng-1.9.9/src/gsockaddr.c
+--- syslog-ng-1.9.9.orig/src/gsockaddr.c	2006-02-11 18:37:02.000000000 +0000
++++ syslog-ng-1.9.9/src/gsockaddr.c	2006-03-28 11:41:14.058514000 +0100
+@@ -91,6 +91,12 @@
+         }
+       rc = G_IO_STATUS_NORMAL;
+     }
++
++  if (g_in_multicast(fd, addr))
++    {
++      return G_IO_STATUS_ERROR;
++    }
++  
+   return rc;
+ }
+ 
+@@ -610,6 +616,41 @@
+ 
+ #endif
+ 
++int
++g_in_multicast(int fd, GSockAddr *addr)
++{
++  struct ip_mreq mreq;
++#if ENABLED_IPV6
++  struct ipv6_mreq mreq6;
++#endif
++  
++  switch (addr->sa.sa_family)
++    {
++#if ENABLE_IPV6
++      case AF_INET6:
++	if (IN6_IS_ADDR_MULTICAST(&(((GSockAddrInet6 *) addr)->sin6.sin6_addr)))
++	  {
++            memcpy(&mreq6.ipv6mr_multiaddr, &((GSockAddrInet6 *) addr)->sin6->sin6_addr.s_addr), sizeof(struct in6_addr));
++            mreq6.ipv6mr_interface.s_addr=0;
++            if (setsockopt(fd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq6, sizeof(mreq6)) < 0)
++		return 1;
++	  }
++	break;
++#endif
++      case AF_INET:
++	if (IN_MULTICAST(ntohl(((GSockAddrInet *) addr)->sin.sin_addr.s_addr)))
++	  {
++            mreq.imr_multiaddr.s_addr=((GSockAddrInet *) addr)->sin.sin_addr.s_addr;
++            mreq.imr_interface.s_addr=INADDR_ANY;
++            if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0)
++		return 1;
++	  }
++	break;
++    }
++  
++  return 0;
++}
++
+ /* AF_UNIX socket address */
+ 
+ /*+
+diff -u syslog-ng-1.9.9.orig/src/gsockaddr.h syslog-ng-1.9.9/src/gsockaddr.h
+--- syslog-ng-1.9.9.orig/src/gsockaddr.h	2006-02-11 18:36:32.000000000 +0000
++++ syslog-ng-1.9.9/src/gsockaddr.h	2006-03-28 11:34:32.508514000 +0100
+@@ -73,6 +73,8 @@
+ 
+ #endif
+ 
++int g_in_multicast(int fd, GSockAddr *addr);
++
+ GSockAddr *g_sockaddr_unix_new(gchar *name);
+ GSockAddr *g_sockaddr_unix_new2(struct sockaddr_un *s_un, int sunlen);
+ 
+Only in syslog-ng-1.9.9/src: Makefile
+
+    * Previous message: [syslog-ng] error moessage when upgrading to 1.9.9 on Debian Unstable
+    * Next message: [syslog-ng] multicast support
+    * Messages sorted by: [ date ] [ thread ] [ subject ] [ author ]
+
+More information about the syslog-ng mailing list
+
