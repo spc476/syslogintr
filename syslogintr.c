@@ -686,35 +686,59 @@ Status create_socket(SocketNode listen,socklen_t saddr)
 
   if (bind(listen->sock,&listen->local.ss,saddr) == -1)
     return retstatus(false,errno,"bind()");
+    
+  /*--------------------------------------------------------------------
+  ; Interesting interaction here.  Even if we aren't using mutlicasting,
+  ; someone *could* potentially send UDP traffic to the "all hosts" address
+  ; of 224.0.0.1 (which all hosts implicitely belong to).  What we're doing
+  ; here is telling the kernel to *NOT* loop back our own traffic, to
+  ; prevent syslog loops.  Syslog loops are *NOT* fun, trust me on this.
+  ;
+  ; Also, Stevens (from _Unix Network Programming: The Sockets Networking
+  ; API_, Volume 1, Third Edition_) notes the following for
+  ; IP_MULTICAST_LOOP:
+  ;
+  ;	The IPv4 TTL and loopback options take a u_char argument, while the
+  ;	IPv6 hop limit and loopback options take an int and u_int argument,
+  ;	respectively.  A common programming error with the IPv4 multicast
+  ;	options is to call setsockopt() with an int argument to specify the
+  ;	TTL or loopback (which is not allowed; pp. 354-355 of TCPv2), since
+  ;	most of the other socket options ... have integer arguments.  The
+  ;	change with IPv6 makes them more consistent with other options.
+  ;
+  ; Also, check to see if the addresses are multicast addresses, and 
+  ; join in the appropriate multicast group.
+  ;-----------------------------------------------------------------------*/
 
-  /*-------------------------------------------------------------------------
-  ; check if any of the addresses passed in are mutlicast addresses, and if
-  ; so, notify membership in said multicast group.
-  ;------------------------------------------------------------------------*/
-  
-  if (
-       (listen->local.ss.sa_family == AF_INET6) 
-       && IN6_IS_ADDR_MULTICAST(&listen->local.sin6.sin6_addr)
-     )
+  if (listen->local.ss.sa_family == AF_INET)
   {
-    struct ipv6_mreq mreq6;
-    
-    mreq6.ipv6mr_multiaddr = listen->local.sin6.sin6_addr;
-    mreq6.ipv6mr_interface = 0;
-    if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_ADD_MEMBERSHIP,&mreq6,sizeof(mreq6)) < 0)
-      return retstatus(false,errno,"setsockopt(MULTICAST6)");
+    if (setsockopt(listen->sock,IPPROTO_IP,IP_MULTICAST_LOOP,(unsigned char *){0},1) < 0)
+      return retstatus(false,errno,"setsockopt(MULTICAST_LOOP)");
+      
+    if (IN_MULTICAST(ntohl(listen->local.sin.sin_addr.s_addr)))
+    {
+      struct ip_mreq mreq;
+      
+      mreq.imr_multiaddr = listen->local.sin.sin_addr;
+      mreq.imr_interface.s_addr = INADDR_ANY;
+      if (setsockopt(listen->sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreq,sizeof(mreq)) < 0)
+        return retstatus(false,errno,"setsockopt(MULTICAST)");
+    }
   }
-  else if (
-            (listen->local.ss.sa_family == AF_INET)
-            && IN_MULTICAST(ntohl(listen->local.sin.sin_addr.s_addr))
-          )
+  else if (listen->local.ss.sa_family == AF_INET6)
   {
-    struct ip_mreq mreq;
+    if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,(unsigned int *){0},sizeof(int)) < 0)
+      return retstatus(false,errno,"setsockopt(MULTICAST6_LOOP)");
     
-    mreq.imr_multiaddr = listen->local.sin.sin_addr;
-    mreq.imr_interface.s_addr = INADDR_ANY;
-    if (setsockopt(listen->sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreq,sizeof(mreq)) < 0)
-      return retstatus(false,errno,"setsockopt(MULTICAST)");
+    if (IN6_IS_ADDR_MULTICAST(&listen->local.sin6.sin6_addr))
+    {
+      struct ipv6_mreq mreq6;
+      
+      mreq6.ipv6mr_multiaddr = listen->local.sin6.sin6_addr;
+      mreq6.ipv6mr_interface = 0;
+      if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_ADD_MEMBERSHIP,&mreq6,sizeof(mreq6)) < 0)
+        return retstatus(false,errno,"setsockopt(MULTICAST6)");
+    }
   }
   
   return c_okay;
