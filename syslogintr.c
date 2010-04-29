@@ -706,6 +706,8 @@ Status create_socket(SocketNode listen,socklen_t saddr)
   ;	most of the other socket options ... have integer arguments.  The
   ;	change with IPv6 makes them more consistent with other options.
   ;
+  ; (via http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=156232)
+  ;
   ; Also, check to see if the addresses are multicast addresses, and 
   ; join in the appropriate multicast group.
   ;-----------------------------------------------------------------------*/
