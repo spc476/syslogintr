@@ -714,7 +714,9 @@ Status create_socket(SocketNode listen,socklen_t saddr)
 
   if (listen->local.ss.sa_family == AF_INET)
   {
-    if (setsockopt(listen->sock,IPPROTO_IP,IP_MULTICAST_LOOP,(unsigned char *){0},1) < 0)
+    unsigned char on = 0;
+
+    if (setsockopt(listen->sock,IPPROTO_IP,IP_MULTICAST_LOOP,&on,1) < 0)
       return retstatus(false,errno,"setsockopt(MULTICAST_LOOP)");
       
     if (IN_MULTICAST(ntohl(listen->local.sin.sin_addr.s_addr)))
@@ -729,7 +731,9 @@ Status create_socket(SocketNode listen,socklen_t saddr)
   }
   else if (listen->local.ss.sa_family == AF_INET6)
   {
-    if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,(unsigned int *){0},sizeof(int)) < 0)
+    unsigned int on = 0;
+    
+    if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,&on,sizeof(on)) < 0)
       return retstatus(false,errno,"setsockopt(MULTICAST6_LOOP)");
     
     if (IN6_IS_ADDR_MULTICAST(&listen->local.sin6.sin6_addr))
