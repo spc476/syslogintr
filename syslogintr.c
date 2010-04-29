@@ -719,7 +719,7 @@ Status create_socket(SocketNode listen,socklen_t saddr)
     {
       struct ip_mreq mreq;
       
-      mreq.imr_multiaddr = listen->local.sin.sin_addr;
+      mreq.imr_multiaddr        = listen->local.sin.sin_addr;
       mreq.imr_interface.s_addr = INADDR_ANY;
       if (setsockopt(listen->sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreq,sizeof(mreq)) < 0)
         return retstatus(false,errno,"setsockopt(MULTICAST)");
