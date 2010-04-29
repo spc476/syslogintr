@@ -188,12 +188,15 @@ enum
   OPT_GROUP	= 'g',
   OPT_IPv4	= '4',
   OPT_IPv6	= '6',
+  OPT_IPv4int   = 'i',
+  OPT_IPv6int   = 'I',
   OPT_LOCAL	= 'l',
   OPT_SOCKET	= 's',
   OPT_FG	= 'f',
   OPT_PATH	= 'p',
   OPT_CPATH	= 'c',
-  OPT_HELP	= 'h'
+  OPT_HELP	= 'h',
+  OPT_ERR       = '?'
 };
 
 typedef struct status
@@ -257,8 +260,8 @@ struct msg
 
 /******************************************************************/
 
-Status		 ipv4_socket		(void);
-Status		 ipv6_socket		(void);
+Status		 ipv4_socket		(const char *);
+Status		 ipv6_socket		(const char *);
 Status		 local_socket		(const char *);
 Status		 create_socket		(SocketNode,socklen_t);
 void		 event_read		(SocketNode);
@@ -358,8 +361,13 @@ const struct option c_options [] =
   { "ip"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ip4"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ipv4"	   , no_argument       , NULL		, OPT_IPv4	} ,
+  { "ipaddr"       , required_argument , NULL		, OPT_IPv4int	} ,
+  { "ip4addr"	   , required_argument , NULL		, OPT_IPv4int	} ,
+  { "ipv4addr"	   , required_argument , NULL		, OPT_IPv4int	} ,
   { "ip6"	   , no_argument       , NULL		, OPT_IPv6	} ,
   { "ipv6"	   , no_argument       , NULL		, OPT_IPv6	} ,
+  { "ip6addr"	   , required_argument , NULL		, OPT_IPv6int	} ,
+  { "ipv6addr"     , required_argument , NULL		, OPT_IPv6int   } ,
   { "local"	   , no_argument       , NULL		, OPT_LOCAL     } ,
   { "socket"	   , required_argument , NULL		, OPT_SOCKET	} ,
   { "user"	   , required_argument , NULL	        , OPT_USER      } ,
@@ -594,13 +602,15 @@ int main(int argc,char *argv[])
 
 /*************************************************************/
 
-Status ipv4_socket(void)
+Status ipv4_socket(const char *taddr)
 {
+  assert(taddr != NULL);
+  
   if (g_maxsocket == MAX_SOCKETS)
     return retstatus(false,EADDRNOTAVAIL,"ipv4_socket()");
     
   g_ipv4 = g_maxsocket++;
-  inet_pton(AF_INET,LOG_IPv4,&g_sockets[g_ipv4].local.sin.sin_addr.s_addr);
+  inet_pton(AF_INET,taddr,&g_sockets[g_ipv4].local.sin.sin_addr.s_addr);
   g_sockets[g_ipv4].local.sin.sin_family = AF_INET;
   g_sockets[g_ipv4].local.sin.sin_port   = htons(LOG_PORT);
   return create_socket(&g_sockets[g_ipv4],sizeof(struct sockaddr_in));
@@ -608,13 +618,15 @@ Status ipv4_socket(void)
 
 /*************************************************************/
 
-Status ipv6_socket(void)
+Status ipv6_socket(const char *taddr)
 {
+  assert(taddr != NULL);
+  
   if (g_maxsocket == MAX_SOCKETS)
     return retstatus(false,EADDRNOTAVAIL,"ipv6_socket()");
   
   g_ipv6 = g_maxsocket++;
-  inet_pton(AF_INET6,LOG_IPv6,&g_sockets[g_ipv6].local.sin6.sin6_addr.s6_addr);
+  inet_pton(AF_INET6,taddr,&g_sockets[g_ipv6].local.sin6.sin6_addr.s6_addr);
   g_sockets[g_ipv6].local.sin6.sin6_family = AF_INET6;
   g_sockets[g_ipv6].local.sin6.sin6_port   = htons(LOG_PORT);
   return create_socket(&g_sockets[g_ipv6],sizeof(struct sockaddr_in6));
@@ -663,7 +675,7 @@ Status create_socket(SocketNode listen,socklen_t saddr)
   listen->sock = socket(listen->local.ss.sa_family,SOCK_DGRAM,0);
   
   if (setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse)) == -1)
-    return retstatus(false,errno,"setsockopt()");
+    return retstatus(false,errno,"setsockopt(REUSE)");
 
   flag = fcntl(listen->sock,F_GETFL,0);
   if (flag == -1)
@@ -674,6 +686,36 @@ Status create_socket(SocketNode listen,socklen_t saddr)
 
   if (bind(listen->sock,&listen->local.ss,saddr) == -1)
     return retstatus(false,errno,"bind()");
+
+  /*-------------------------------------------------------------------------
+  ; check if any of the addresses passed in are mutlicast addresses, and if
+  ; so, notify membership in said multicast group.
+  ;------------------------------------------------------------------------*/
+  
+  if (
+       (listen->local.ss.sa_family == AF_INET6) 
+       && IN6_IS_ADDR_MULTICAST(&listen->local.sin6.sin6_addr)
+     )
+  {
+    struct ipv6_mreq mreq6;
+    
+    mreq6.ipv6mr_multiaddr = listen->local.sin6.sin6_addr;
+    mreq6.ipv6mr_interface = 0;
+    if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_ADD_MEMBERSHIP,&mreq6,sizeof(mreq6)) < 0)
+      return retstatus(false,errno,"setsockopt(MULTICAST6)");
+  }
+  else if (
+            (listen->local.ss.sa_family == AF_INET)
+            && IN_MULTICAST(ntohl(listen->local.sin.sin_addr.s_addr))
+          )
+  {
+    struct ip_mreq mreq;
+    
+    mreq.imr_multiaddr = listen->local.sin.sin_addr;
+    mreq.imr_interface.s_addr = INADDR_ANY;
+    if (setsockopt(listen->sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreq,sizeof(mreq)) < 0)
+      return retstatus(false,errno,"setsockopt(MULTICAST)");
+  }
   
   return c_okay;
 }
@@ -1041,9 +1083,11 @@ Status globalv_init(int argc,char *argv[])
   
   while(true)
   {
-    switch(getopt_long(argc,argv,"f46lhu:g:s:p:c:",c_options,&option))
+    switch(getopt_long(argc,argv,"f46lhu:g:s:p:c:i:I:",c_options,&option))
     {
       default:
+      case OPT_ERR:
+           fprintf(stderr,"unknown option '%c'\n",optopt);
       case OPT_HELP:
            usage(argv[0]);
            return retstatus(false,0,"");
@@ -1053,11 +1097,19 @@ Status globalv_init(int argc,char *argv[])
            gf_foreground = 1;
            break;
       case OPT_IPv4:
-           status = ipv4_socket();
+           status = ipv4_socket(LOG_IPv4);
+           if (!status.okay) return status;
+           break;
+      case OPT_IPv4int:
+           status = ipv4_socket(optarg);
            if (!status.okay) return status;
            break;
       case OPT_IPv6:
-           status = ipv6_socket();
+           status = ipv6_socket(LOG_IPv6);
+           if (!status.okay) return status;
+           break;
+      case OPT_IPv6int:
+           status = ipv6_socket(optarg);
            if (!status.okay) return status;
            break;
       case OPT_LOCAL:
@@ -1124,8 +1176,13 @@ void usage(const char *progname)
         "\t-4 | --ip                       accept from IPv4 hosts\n"
         "\t   | --ip4                            \"\n"
         "\t   | --ipv4                           \"\n"
+        "\t-i | --ipaddr [IPv4addr]        accept IPv4 on IPv4addr\n"
+        "\t   | --ip4addr [IPv4addr]             \"\n"
+        "\t   | --ipv4addr [IPv4addr]            \"\n"
         "\t-6 | --ip6                      accept from IPv6 hosts\n"
         "\t   | --ipv6                           \"\n"
+        "\t-I | --ip6addr [IPv6addr]       accept IPv6 on IPv6 addr\n"
+        "\t   | --ipv6addr [IPv6addr]            \"\n"
         "\t-l | --local                    accept from " LOG_LOCAL "\n"
         "\t-s | --socket <path>            accept from unix socket (%d max)\n"
         "\t-f | --foreground               run in foreground\n"
@@ -1373,8 +1430,6 @@ Status set_signal_handler(int sig,void (*handler)(int))
 {
   struct sigaction act;
   struct sigaction oact;
-  
-  assert(handler != NULL);
   
   sigemptyset(&act.sa_mask);
   act.sa_handler = handler;
