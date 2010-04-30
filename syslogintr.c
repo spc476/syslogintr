@@ -196,6 +196,7 @@ enum
   OPT_PATH	= 'p',
   OPT_CPATH	= 'c',
   OPT_HELP	= 'h',
+  OPT_NOPIDF    = 'P',
   OPT_ERR       = '?'
 };
 
@@ -347,6 +348,7 @@ const char          *g_group;
 const char          *g_lpath;
 const char          *g_lcpath;
 bool                 gf_foreground;
+bool                 gf_nopid;
 lua_State           *g_L;
 struct socket_node   g_sockets[MAX_SOCKETS];
 size_t               g_maxsocket;
@@ -358,6 +360,7 @@ List                 g_intlog;
 const struct option c_options [] =
 {
   { "foreground"   , no_argument       , NULL		, OPT_FG        } ,
+  { "nopidfile"    , no_argument       , NULL           , OPT_NOPIDF    } ,
   { "ip"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ip4"	   , no_argument       , NULL		, OPT_IPv4	} ,
   { "ipv4"	   , no_argument       , NULL		, OPT_IPv4	} ,
@@ -451,13 +454,16 @@ int main(int argc,char *argv[])
     }
   }
 
-  fppid = fopen(PID_FILE,"w");
-  if (fppid)
+  if (!gf_nopid)
   {
-    fprintf(fppid,"%lu\n",(unsigned long)getpid());
-    fclose(fppid);
+    fppid = fopen(PID_FILE,"w");
+    if (fppid)
+    {
+      fprintf(fppid,"%lu\n",(unsigned long)getpid());
+      fclose(fppid);
+    }
   }
-
+  
   status = drop_privs();
   if (!status.okay)
   {
@@ -1113,7 +1119,7 @@ Status globalv_init(int argc,char *argv[])
   
   while(true)
   {
-    switch(getopt_long(argc,argv,"f46lhu:g:s:p:c:i:I:",c_options,&option))
+    switch(getopt_long(argc,argv,"fP46lhu:g:s:p:c:i:I:",c_options,&option))
     {
       default:
       case OPT_ERR:
@@ -1125,6 +1131,9 @@ Status globalv_init(int argc,char *argv[])
            break;
       case OPT_FG:
            gf_foreground = true;
+           break;
+      case OPT_NOPIDF:
+           gf_nopid = true;
            break;
       case OPT_IPv4:
            status = ipv4_socket(LOG_IPv4);
@@ -1216,6 +1225,7 @@ void usage(const char *progname)
         "\t-l | --local                    accept from " LOG_LOCAL "\n"
         "\t-s | --socket <path>            accept from unix socket (%d max)\n"
         "\t-f | --foreground               run in foreground\n"
+        "\t-P | --nopidfile                don't create " PID_FILE "\n"
         "\t-u | --user  <username>         user to run as (no default)\n"
         "\t-g | --group <groupname>        group to run as (no default)\n"
         "\t-p | --lua-path <path>          add path to Lua package.path\n"
