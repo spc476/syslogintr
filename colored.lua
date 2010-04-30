@@ -3,8 +3,8 @@
 
 -- cut -b 1-187 (to account for XTERM escape sequences)
 
-io.stdout:write("\27[2J")	-- clear screen to black
-io.stdout:flush()
+--io.stdout:write("\27[2J")	-- clear screen to black
+--io.stdout:flush()
 
 colors =
 {
@@ -15,12 +15,12 @@ colors =
   warn   = "\27[0;33m",
   notice = "\27[1;32m",
   info   = "\27[0;32m",
-  debug  = "\27[0;34m"
+  debug  = "\27[1;34m"
 }
 
 function log(msg)
   io.stdout:write(string.format(
-	"%s%15.15s | %-15.15s | %-8s %6s | %s | %s\n",
+	"%s%15.15s %-15.15s %-6s %6s %s %s\n",
 	colors[msg.level],
 	msg.host,
 	msg.program,
