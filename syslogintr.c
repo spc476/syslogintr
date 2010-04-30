@@ -588,7 +588,8 @@ int main(int argc,char *argv[])
       unlink(g_sockets[i].local.ssun.sun_path);
   }
   
-  unlink(PID_FILE);	/* don't care if this succeeds or not */
+  if (!gf_nopid)
+    unlink(PID_FILE);	/* don't care if this succeeds or not */
   
   /*------------------------------------------------------------------------
   ; Per http://www.cons.org/cracauer/sigint.html, the only proper way to
