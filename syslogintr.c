@@ -346,7 +346,7 @@ const char          *g_user;
 const char          *g_group;
 const char          *g_lpath;
 const char          *g_lcpath;
-int                  gf_foreground;
+bool                 gf_foreground;
 lua_State           *g_L;
 struct socket_node   g_sockets[MAX_SOCKETS];
 size_t               g_maxsocket;
@@ -1124,7 +1124,7 @@ Status globalv_init(int argc,char *argv[])
       case OPT_NONE: 
            break;
       case OPT_FG:
-           gf_foreground = 1;
+           gf_foreground = true;
            break;
       case OPT_IPv4:
            status = ipv4_socket(LOG_IPv4);
