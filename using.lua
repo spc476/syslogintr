@@ -103,7 +103,7 @@ function log_to_file(file,msg)
   		os.date("%b %d %H:%M:%S",msg.timestamp),
   		msg.msg
   	))
-  file:flush()
+  --file:flush()
 end
 
 -- ********************************************************
