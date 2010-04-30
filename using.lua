@@ -30,6 +30,8 @@ end
 
 alarm("60m")
 
+logger = host("239.255.0.1")
+
 -- *******************************************************
 
 function reload_signal()
@@ -78,6 +80,7 @@ function log(msg)
   inc_hostcount(msg.host)  
   log_to_file(logfile,msg)
   sshd(msg)
+  relay(logger,msg)
 end
 
 -- ********************************************************
@@ -108,3 +111,4 @@ end
 I_log("debug","path:  " .. package.path)
 I_log("debug","reloaded " .. script)
 log_hostcounts()
+I_log("debug","relaying to " .. tostring(logger))
