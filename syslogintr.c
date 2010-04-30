@@ -694,12 +694,9 @@ Status create_socket(SocketNode listen,socklen_t saddr)
     return retstatus(false,errno,"bind()");
     
   /*--------------------------------------------------------------------
-  ; Interesting interaction here.  Even if we aren't using mutlicasting,
-  ; someone *could* potentially send UDP traffic to the "all hosts" address
-  ; of 224.0.0.1 (which all hosts implicitely belong to).  What we're doing
-  ; here is telling the kernel to *NOT* loop back our own traffic, to
-  ; prevent syslog loops.  Syslog loops are *NOT* fun, trust me on this.
-  ;
+  ; For multicast addresses, inform the kernel *not* to loop the data back
+  ; to us.  Syslog loops are *NOT* fun; trust me on this.
+  ;  
   ; Also, Stevens (from _Unix Network Programming: The Sockets Networking
   ; API_, Volume 1, Third Edition_) notes the following for
   ; IP_MULTICAST_LOOP:
@@ -720,14 +717,13 @@ Status create_socket(SocketNode listen,socklen_t saddr)
 
   if (listen->local.ss.sa_family == AF_INET)
   {
-    unsigned char on = 0;
-
-    if (setsockopt(listen->sock,IPPROTO_IP,IP_MULTICAST_LOOP,&on,1) < 0)
-      return retstatus(false,errno,"setsockopt(MULTICAST_LOOP)");
-      
     if (IN_MULTICAST(ntohl(listen->local.sin.sin_addr.s_addr)))
     {
+      unsigned char  on = 0;
       struct ip_mreq mreq;
+
+      if (setsockopt(listen->sock,IPPROTO_IP,IP_MULTICAST_LOOP,&on,1) < 0)
+        return retstatus(false,errno,"setsockopt(MULTICAST_LOOP)");
       
       mreq.imr_multiaddr        = listen->local.sin.sin_addr;
       mreq.imr_interface.s_addr = INADDR_ANY;
@@ -737,14 +733,13 @@ Status create_socket(SocketNode listen,socklen_t saddr)
   }
   else if (listen->local.ss.sa_family == AF_INET6)
   {
-    unsigned int on = 0;
-    
-    if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,&on,sizeof(on)) < 0)
-      return retstatus(false,errno,"setsockopt(MULTICAST6_LOOP)");
-    
     if (IN6_IS_ADDR_MULTICAST(&listen->local.sin6.sin6_addr))
     {
+      unsigned int     on = 0;
       struct ipv6_mreq mreq6;
+
+      if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,&on,sizeof(on)) < 0)
+        return retstatus(false,errno,"setsockopt(MULTICAST6_LOOP)");
       
       mreq6.ipv6mr_multiaddr = listen->local.sin6.sin6_addr;
       mreq6.ipv6mr_interface = 0;
