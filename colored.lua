@@ -4,6 +4,7 @@
 --io.stdout:write("\27[2J")	-- clear screen to black
 --io.stdout:flush()
 
+--[[
 if logfiles == nil then
   logfiles = {}
   logfiles = setmetatable({},{
@@ -14,6 +15,7 @@ if logfiles == nil then
   	end
   	})
 end
+--]]
 
 colors =
 {
@@ -40,6 +42,6 @@ function log(msg)
 	))
   io.stdout:flush()
   
-  logfiles[msg.host]:write(string.format("%s\n",msg._RAW))
-  logfiles[msg.host]:flush()
+  --logfiles[msg.host]:write(string.format("%s\n",msg._RAW))
+  --logfiles[msg.host]:flush()
 end
