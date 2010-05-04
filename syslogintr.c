@@ -57,7 +57,7 @@
 * seconds between invocations of the supplied alarm_handler() function, or a
 * string, which has a format of "<number>s" (for number of seconds),
 * "<number>m" (for number of minutes), "<number>h" (for number of hours) or
-* "<number>d" (for number of days).  The functino alarm_handler() takes no
+* "<number>d" (for number of days).  The function alarm_handler() takes no
 * parameters, nor returns any paramters.
 *
 * There are also two Lua variables defined:
