@@ -1,3 +1,15 @@
+
+NOTE! The author of this package grants an exemption of Section 5 and 6 of
+this license for any new or additional Lua scripts written by you for use
+with this package.  Only the C source code and the Lua scripts provided in
+this package are covered under this license.
+
+Also note that the GPL below is copyright by the Free Software Foundation,
+but the instance of code that this refers to (the C source code and Lua
+scripts contained within this package) are copyright Sean Conner.
+
+             --------------------------------------------------
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
