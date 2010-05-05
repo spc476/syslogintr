@@ -20,31 +20,30 @@
 --
 -- ********************************************************************
 
-function log(msg)
+require "I_log"
 
-  if msg.remote then
-    io.stdout:write(string.format("From: %15s:%d\n",msg.host,msg.port))
-  else
-    io.stdout:write(string.format("From: %15s\n",msg.host))
-  end
-
-  io.stdout:write(string.format([[
-	Facility: %s
-	Level:    %s
-	Time:     %s
-	Log-time: %s
-	Program:  %s
-	PID:      %s
-	Msg:      %s
-	
-]],
-	msg.facility,
-	msg.level,
-	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestatmp),
-	msg.program,
-	msg.pid,
-	msg.msg
-  ))
-
+if hostcount == nil then
+  hostcount = setmetatable({},{__index = function(t,k) return 0 end })
 end
+
+-- ********************************************************************
+
+function log_hostcounts()
+  local s = ""
+  
+  for name,value in pairs(hostcount) do
+    s = s .. string.format("%s:%d ",name,value)
+    hostcount[name] = 0
+  end
+  
+  I_prlog("summary/hosts","info",s)
+end
+
+-- *********************************************************************
+
+function inc_hostcount(host)
+  hostcount[host] = hostcount[host] + 1
+end
+
+-- ********************************************************************
+

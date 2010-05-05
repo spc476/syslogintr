@@ -20,31 +20,35 @@
 --
 -- ********************************************************************
 
-function log(msg)
+require "I_log"
 
-  if msg.remote then
-    io.stdout:write(string.format("From: %15s:%d\n",msg.host,msg.port))
-  else
-    io.stdout:write(string.format("From: %15s\n",msg.host))
+local sendmail = "/usr/sbin/sendmail"
+
+-- ************************************************************************
+
+function send_email(email)
+{
+  local sendmail = io.popen(sendmail .. " " .. email.to,"w")
+  if sendmail == nil then
+    I_log("crit","nonexec of sendmail")
+    return
   end
+  
+  sendmail:write(string.format([[
+From: %s
+To: %s
+Subject: %s
+Date: %s
 
-  io.stdout:write(string.format([[
-	Facility: %s
-	Level:    %s
-	Time:     %s
-	Log-time: %s
-	Program:  %s
-	PID:      %s
-	Msg:      %s
-	
+%s
+
 ]],
-	msg.facility,
-	msg.level,
-	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestatmp),
-	msg.program,
-	msg.pid,
-	msg.msg
-  ))
-
+	email.from,
+	email.to,
+	email.subject,
+	os.date("%a, %d %b %Y %H:%M:%S %Z",os.time()),
+	email.body))
+  sendmail:close()
+  I_log("debug","send email")
 end
+  

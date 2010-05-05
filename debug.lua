@@ -20,31 +20,46 @@
 --
 -- ********************************************************************
 
+-- *****************************************************************
+--
+-- Program to print out each field and make sure we're parsing the
+-- logs properly.  This is meant to be used from syslogintr as:
+--
+-- ./syslogintr --ipv4 --ipv6 --local --debug --foreground debug.lua
+--
+-- ******************************************************************
+
 function log(msg)
-
-  if msg.remote then
-    io.stdout:write(string.format("From: %15s:%d\n",msg.host,msg.port))
-  else
-    io.stdout:write(string.format("From: %15s\n",msg.host))
-  end
-
+  io.stdout:write(string.format("Request:\n"))
   io.stdout:write(string.format([[
-	Facility: %s
-	Level:    %s
-	Time:     %s
-	Log-time: %s
-	Program:  %s
-	PID:      %s
-	Msg:      %s
-	
+	version       = %d
+	_RAW          = %s
+	host          = %s
+	relay         = %s
+	port          = %d
+	remote        = %s
+	timestamp     = %s
+	logtimestamp  = %s
+	program       = %s
+	pid           = %d
+	facility      = %s
+	level         = %s
+	msg           = %s
+
 ]],
-	msg.facility,
-	msg.level,
+	msg.version,
+	msg._RAW,
+	msg.host,
+	msg.relay,
+	msg.port,
+	tostring(msg.remote),
 	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestatmp),
+	os.date("%c",msg.logtimestamp),
 	msg.program,
 	msg.pid,
-	msg.msg
-  ))
-
+	msg.facility,
+	msg.level,
+	msg.msg))
+	
+  io.stdout:flush()
 end

@@ -20,31 +20,29 @@
 --
 -- ********************************************************************
 
-function log(msg)
+-- *******************************************************************
+--
+-- function to locally log syslog-esque messages.
+--
+-- Beware of logging loops though.
+--
+-- *******************************************************************
 
-  if msg.remote then
-    io.stdout:write(string.format("From: %15s:%d\n",msg.host,msg.port))
-  else
-    io.stdout:write(string.format("From: %15s\n",msg.host))
-  end
-
-  io.stdout:write(string.format([[
-	Facility: %s
-	Level:    %s
-	Time:     %s
-	Log-time: %s
-	Program:  %s
-	PID:      %s
-	Msg:      %s
-	
-]],
-	msg.facility,
-	msg.level,
-	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestatmp),
-	msg.program,
-	msg.pid,
-	msg.msg
-  ))
-
+function I_prlog(program,level,msg)
+  log{
+  	host      = "(internal)",
+  	remote    = false,
+  	program   = program,
+  	facility  = "syslog",
+  	level     = level,
+  	timestamp = os.time(),
+  	msg       = msg
+  }
 end
+
+-- *******************************************************************
+
+function I_log(level,msg)
+  I_prlog(script,level,msg)
+end
+

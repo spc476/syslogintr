@@ -20,31 +20,39 @@
 --
 -- ********************************************************************
 
-function log(msg)
+require "I_log"
+require "sendmail"
 
-  if msg.remote then
-    io.stdout:write(string.format("From: %15s:%d\n",msg.host,msg.port))
-  else
-    io.stdout:write(string.format("From: %15s\n",msg.host))
+local namedpid = "/var/run/named.pid"
+local email = {}
+      email.from    = "root@conman.org"
+      email.to      = "spc@conman.org"
+      email.subject = "NAME SERVER NOT RUNNING (crash?)"
+      email.body    = "NAME SERVER NOT RUNNING"
+
+-- *********************************************************************
+
+function check_nameserver()
+  local pidfile = io.open(namedpid,"r")
+  if pidfile == nil then
+    I_log("crit","NAME SERVER NOT RUNNING (crash?)")
+    send_email(email);
+    return
   end
 
-  io.stdout:write(string.format([[
-	Facility: %s
-	Level:    %s
-	Time:     %s
-	Log-time: %s
-	Program:  %s
-	PID:      %s
-	Msg:      %s
-	
-]],
-	msg.facility,
-	msg.level,
-	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestatmp),
-	msg.program,
-	msg.pid,
-	msg.msg
-  ))
+  local pid = pidfile:read("*n")   
+  pidfile:close()
 
+  local exefile = io.open("/proc/" .. pid)
+  if exefile == nil then
+    I_log("crit","NAME SERVER NOT RUNNING")
+    send_email(email);
+    return
+  end   
+
+  exefile:close()
+  I_log("debug","name server still running")
 end
+
+-- ********************************************************************
+
