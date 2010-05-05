@@ -27,8 +27,8 @@ local namedpid = "/var/run/named.pid"
 local email = {}
       email.from    = "root@conman.org"
       email.to      = "spc@conman.org"
-      email.subject = "NAME SERVER NOT RUNNING (crash?)"
-      email.body    = "NAME SERVER NOT RUNNING"
+      email.subject = "NAME SERVER NOT RUNNING"
+      email.body    = "NAME SERVER NOT RUNNING\n\n.\n"
 
 -- *********************************************************************
 
@@ -36,7 +36,7 @@ function check_nameserver()
   local pidfile = io.open(namedpid,"r")
   if pidfile == nil then
     I_log("crit","NAME SERVER NOT RUNNING (crash?)")
-    send_email(email);
+    send_email(email)
     return
   end
 
@@ -46,7 +46,7 @@ function check_nameserver()
   local exefile = io.open("/proc/" .. pid)
   if exefile == nil then
     I_log("crit","NAME SERVER NOT RUNNING")
-    send_email(email);
+    send_email(email)
     return
   end   
 
