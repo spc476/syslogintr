@@ -27,14 +27,13 @@ local sendmail = "/usr/sbin/sendmail"
 -- ************************************************************************
 
 function send_email(email)
-{
-  local sendmail = io.popen(sendmail .. " " .. email.to,"w")
-  if sendmail == nil then
+  local exec = io.popen(sendmail .. " " .. email.to,"w")
+  if exec == nil then
     I_log("crit","nonexec of sendmail")
     return
   end
   
-  sendmail:write(string.format([[
+  exec:write(string.format([[
 From: %s
 To: %s
 Subject: %s
@@ -48,7 +47,9 @@ Date: %s
 	email.subject,
 	os.date("%a, %d %b %Y %H:%M:%S %Z",os.time()),
 	email.body))
-  sendmail:close()
+  exec:close()
+  exec = nil
+  
   I_log("debug","send email")
 end
   
