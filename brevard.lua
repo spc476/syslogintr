@@ -8,6 +8,13 @@ require "postfix-mailsummary"
 -- **********************************************************************
 
 function alarm_handler()
+  -- =======================================================================
+  -- there's a nasty bug here---if *both* are down, then syslogintr hangs
+  -- sending the *second* email notification don't know why ... also don't
+  -- know if this is an actual bug in the previous version, or I never fully
+  -- tested both servers being down.
+  -- =======================================================================
+
   check_nameserver()
   check_webserver()
 end
