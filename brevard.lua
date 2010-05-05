@@ -59,6 +59,8 @@ function log(msg)
             or msg.msg == 'Connection closed by 66.252.227.77') then
       return
     end
+
+    if msg.program == 'gld' then return end
     msg.host = "brevard"
   end
 
