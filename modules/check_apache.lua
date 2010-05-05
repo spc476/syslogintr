@@ -24,14 +24,14 @@ require "I_log"
 require "sendmail"
 
 local url      = "http://www.conman.org/server-status\?auto"
-local user     = "spc"
-local password = "w2e3r4t5"
+-- local user     = "user"
+-- local password = "password"
 
 local email   = {}
       email.from    = "root@conman.org"
       email.to      = "spc@conman.org"
       email.subject = "WEB SERVER NOT RUNNING"
-      email.body    = "WEB SERVER NOT RUNNING"
+      email.body    = "WEB SERVER NOT RUNNING\n\n.\n"
 
 -- ************************************************************************
 -- NO USER SERVICABLE PARTS PAST HERE---YOU SHOULD KNOW WHAT YOU ARE DOING!
@@ -39,9 +39,9 @@ local email   = {}
 
 local cmd = "wget"
 
-if user ~= "" then
-  cmd = cmd .. " --user
-  if password ~= "" then
+if user and user ~= "" then
+  cmd = cmd .. " --user " .. user
+  if password and password ~= "" then
     cmd = cmd .. " --password " .. password
   end
 end
@@ -75,17 +75,10 @@ function check_webserver()
 
   if msg == "0 0 0 0s 0 0 0 0 0" then
     I_log("crit","WEB SERVER NOT RUNNING")
-    send_emergency_email(email)
+    send_email(email)
+    I_log("debug","past sending email")
   else  
-    log{
-        host      = "(internal)",
-        remote    = false,
-        program   = "check/httpd",
-        facility  = "daemon", 
-        level     = "info",   
-        timestamp = os.time(),
-        msg       = msg
-    }
+    I_prlog("check/httpd","info",msg)
   end
 end
 
