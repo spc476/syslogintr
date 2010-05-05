@@ -21,7 +21,7 @@
 -- ********************************************************************
 
 if maillist == nil then	-- protect against reloading
-  mailist = {}		-- used to store loglines as they come in
+  maillist = {}		-- used to store loglines as they come in
 end
 
 -- ********************************************************************
