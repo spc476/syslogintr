@@ -23,35 +23,22 @@
 require "I_log"
 require "sendmail"
 
-local url      = "http://www.conman.org/server-status\?auto"
--- local user     = "user"
--- local password = "password"
-
-local email   = {}
-      email.from    = "root@conman.org"
-      email.to      = "spc@conman.org"
-      email.subject = "WEB SERVER NOT RUNNING"
-      email.body    = "WEB SERVER NOT RUNNING\n\n.\n"
-
 -- ************************************************************************
 -- NO USER SERVICABLE PARTS PAST HERE---YOU SHOULD KNOW WHAT YOU ARE DOING!
 -- ************************************************************************
 
-local cmd = "wget"
-
-if user and user ~= "" then
-  cmd = cmd .. " --user " .. user
-  if password and password ~= "" then
-    cmd = cmd .. " --password " .. password
-  end
-end
-
-cmd = cmd .. " -O - " .. url .. " 2>/dev/null"
-
--- **********************************************************************
-
-function check_webserver()
+function check_webserver(params)
   local res   = {}
+  local cmd   = "wget"
+
+  if params.user then
+    cmd = cmd .. " --user " .. params.user
+    if params.password then
+      cmd = cmd .. "--password " .. password
+    end
+  end
+  cmd = cmd .. " -O - " .. params.url .. " 2>/dev/null"
+
   local stats = io.popen(cmd,"r")
 
   for line in stats:lines() do
@@ -75,7 +62,19 @@ function check_webserver()
 
   if msg == "0 0 0 0s 0 0 0 0 0" then
     I_log("crit","WEB SERVER NOT RUNNING")
-    send_email(email)
+--[[
+    local email   = {}
+    email.from    = params.from    or "root"
+    email.to      = params.to      or "root"
+    email.subject = params.subject or "WEB SERVER NOT RUNNING"
+    email.body    = params.body    or "WEB SERVER NOT RUNNING"
+--]]
+    send_email{
+	from    = params.from    or "root",
+	to      = params.to      or "root",
+	subject = params.subject or "WEB SERVER NOT RUNNING",
+	body    = params.body    or "WEB SERVER NOT RUNNING"
+	}
     I_log("debug","past sending email")
   else  
     I_prlog("check/httpd","info",msg)
