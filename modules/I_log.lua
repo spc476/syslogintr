@@ -33,6 +33,7 @@ function I_prlog(program,level,msg)
   	host      = "(internal)",
   	remote    = false,
   	program   = program,
+	pid       = 0,
   	facility  = "syslog",
   	level     = level,
   	timestamp = os.time(),
