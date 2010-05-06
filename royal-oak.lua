@@ -50,7 +50,10 @@ function log(msg)
   end
 
   if msg.facility == 'local1' then
-    check_ospf(msg,{})
+    check_ospf(msg,{ 
+	from = "root@royal-oak.pickint.net",
+	to = { "spc@pickint.net" , "admin@pickint.net"}
+    })
   end
 
   if logfiles[msg.facility] == nil then
