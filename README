@@ -1,0 +1,99 @@
+
+I've yet to officially release this yet, so there isn't much in the way of
+documentation.  There's some here: http://boston.conman.org/2010/02/09.1 but
+most of the documentation exists in the source code.  A good place to start
+is with syslogintr.c to get a feel for how the code works.  Included are
+quite a few sample scripts, some of which are in production.  These scripts
+are:
+
+	brevard.lua	
+
+			The script running on my personal server.  It
+			maintains the original syslogd logfiles, plus it
+			relays everything to my home server (as part of the
+			syslogintr debugging process).  It also checks to
+			see if the webserver and nameserver are running, and
+			if not, sends an email notification (I've had issues
+			with both just stopping---I know why it happens; I
+			can't fix the why though---long story).  If the
+			webserver is running, it will collect some stats and
+			log those.
+
+			This script will also collect messages from postfix
+			until all the logs for a single email transaction
+			have been collected, then logs a single one-line
+			summary.
+
+	debug.lua
+
+			Simple script to make sure the table passed to Lua
+			contains the proper information.  
+
+	minsys.lua
+
+			Simple script to show a minimal, but fully
+			functional, script that uses all the optional
+			calls.
+
+	northlauderdale.lua
+
+			The script running on an application server. 
+			Again, this logs to the orginal syslogd logfiles,
+			but this script also checks to make sure the
+			webserver is running (it's prone to crash due to
+			a resource limitation) and like brevard.lua, either
+			send an email notification if the webserver isn't
+			running, or log the current webserver stats.  It
+			will also check the kernel resources and logs any
+			information it finds.
+
+	redhat.lua
+
+			A script to act as a (more-or-less) drop-in
+			replacement for syslogd on RedHat derived Linux
+			distributions.  
+
+	relay.lua
+
+			A script to test the relay() function.
+
+	royal-oak.lua
+
+			This one is running on a server that monitors
+			a network using Cacti and Nagios.  There are 
+			routers configured to send their information to
+			this host, so when any OSPF changes happen, an
+			email notification is sent.  This too, also logs
+			to the original syslogd logfiles.
+
+			This system is also running Postfix, so the same
+			Postfix summary that is done in brevard.lua is
+			done here.
+
+	sys.lua
+
+			Another testing script.
+
+	using.lua
+
+			This is the script running on my workstation.  I
+			didn't bother using the original syslogd logfiles
+			here so I log the information in one large file
+			using a non-standard format that I happen to like.
+
+			This script will check for failed ssh login
+			attempts, and if there are 5 or more, it will add
+			the IP address of the otherside to the firewall
+			(iptables) so further attempts are blocked.  It
+			keeps a log of such entries and every hour it will
+			remove the oldest entry (this to keep the iptables
+			from growing uncontrollably) as the attacker will
+			have moved on by then.
+
+			This is also the recipient of the remote logging
+			messages, although at this time, I don't really do
+			any processing of the received messages.
+
+The individual Lua files could be cleaned up, but I'm still exploring the
+capabilities and the ones in heavy use tend to get patched as issues come
+up.
