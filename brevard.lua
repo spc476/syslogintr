@@ -29,8 +29,15 @@ require "postfix-mailsummary"
 -- **********************************************************************
 
 function alarm_handler()
-  check_nameserver()
-  check_webserver()
+  check_nameserver{
+  	from = "root@conman.org",
+  	to   = "spc@conman.org"
+  }
+  check_webserver{
+  	url  = "http://www.conman.org/server-status\?auto",
+  	from = "root@conman.org",
+  	to   = "spc@conman.org"
+  }
 end
 
 -- **********************************************************************
