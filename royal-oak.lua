@@ -41,8 +41,6 @@ homebase = host("74.173.118.3")
 
 function log(msg)
 
-  print(msg._RAW)
-
   if msg.facility == 'local0' and string.match(msg.msg,'UDP%: %[216%.82%.117%.164%]') then
     return
   end
