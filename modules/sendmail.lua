@@ -58,12 +58,12 @@ end
 function send_email(email)
   if type(email.to) == 'table' then
     for i = 1 , #email.to do
-      local new = {}
-      new.from = email.from
-      new.to   = email.to[i]
-      new.subject = email.subject
-      new.body    = email.body
-      send_the_email(new)
+      send_the_email{
+      	from    = email.from,
+      	to      = email.to[i],
+      	subject = email.subject,
+      	body    = email.body
+      }
     end
   else
     send_the_email(email)
