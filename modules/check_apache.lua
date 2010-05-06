@@ -63,13 +63,6 @@ function check_webserver(params)
 
   if msg == "0 0 0 0s 0 0 0 0 0" then
     I_log("crit","WEB SERVER NOT RUNNING")
---[[
-    local email   = {}
-    email.from    = params.from    or "root"
-    email.to      = params.to      or "root"
-    email.subject = params.subject or "WEB SERVER NOT RUNNING"
-    email.body    = params.body    or "WEB SERVER NOT RUNNING"
---]]
     send_email{
 	from    = params.from    or "root",
 	to      = params.to      or "root",
