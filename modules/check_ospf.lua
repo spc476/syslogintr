@@ -4,14 +4,7 @@ require "sendmail"
 
 -- ********************************************************************
 
-local recipients = 
-{
-  "spc@pickint.net",
-  "admin@pickint.net"
-}
-
 local email_good = {}
-      email_good.from          = "root@pickint.net"
       email_good.subject       = "Crisis over, OSPF up and running"
       email_good.body_template = [[
 
@@ -23,7 +16,6 @@ Thanks.
 ]]
 
 local email_bad = {}
-      email_bad.from = "root@pickint.net"
       email_bad.subject = "EMERGENGY---OSPF Adjacency change!"
       email_bad.body_template = [[
 
@@ -37,27 +29,27 @@ HELP!
 
 -- **********************************************************************
 
-local function notify(to,email,msg)
-  email.body = template(
-	email.body_template,
-	{ host = msg.host, logmsg = msg.msg }, 
-	nil
-  )
-
-  for i = 1 , #to do
-    email.to = to[i]
-    send_email(email)
-  end
+local function notify(params,email,msg)
+  send_email{
+  	from = params.from or "root@conman.org",
+  	to   = params.to   or "spc@conman.org",
+  	subject = email.subject,
+  	body    = template(
+  			email.body_template,
+  			{ host = msg.host , logmsg = msg.msg },
+  			nil
+  		)
+  }  
 end
 
 -- ***********************************************************************
 
-function check_ospf(msg)
+function check_ospf(msg,params) 
   if string.match(msg.msg,".*(OSPF%-5%-ADJCHG.*Neighbor Down).*") then
     I_log("crit","OSPF neighbor down")
-    notify(recipients,email_bad,msg)
+    notify(params,email_bad,msg)
   elseif string.match(msg.msg,".*(OSPF%-5%-ADJCHG.*LOADING to FULL).*") then
     I_log("crit","OSPF neighbor up")
-    notify(recipients,email_good,msg)
+    notify(params,email_good,msg)
   end
 end
