@@ -50,7 +50,7 @@ function log(msg)
   end
 
   if msg.facility == 'local1' then
-    check_ospf(msg)
+    check_ospf(msg,{})
   end
 
   if logfiles[msg.facility] == nil then
