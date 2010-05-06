@@ -116,9 +116,6 @@ end
 -- ******************************************************************
 
 function log(msg)
-
-  print(msg._RAW)
-
   -- ==========================
   -- impending doom
   -- log it to the black box
