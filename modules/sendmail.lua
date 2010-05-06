@@ -26,7 +26,7 @@ local sendmail = "/usr/sbin/sendmail"
 
 -- ************************************************************************
 
-function send_email(email)
+local function send_the_email(email)
   local exec = io.popen(sendmail .. " " .. email.to,"w")
   if exec == nil then
     I_log("crit","nonexec of sendmail")
@@ -50,6 +50,22 @@ Date: %s
   exec:close()
   exec = nil
   
-  I_log("debug","send email")
+  I_log("debug","sent email to " .. email.to)
 end
   
+-- *********************************************************************
+
+function send_email(email)
+  if type(email.to) == 'table' then
+    for i = 1 , #email.to do
+      local new = {}
+      new.from = email.from
+      new.to   = email.to[i]
+      new.subject = email.subject
+      new.body    = email.body
+      send_the_email(new)
+    end
+  else
+    send_the_email(email)
+  end
+end
