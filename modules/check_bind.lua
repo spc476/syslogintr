@@ -24,19 +24,19 @@ require "I_log"
 require "sendmail"
 
 local namedpid = "/var/run/named.pid"
-local email = {}
-      email.from    = "root@conman.org"
-      email.to      = "spc@conman.org"
-      email.subject = "NAME SERVER NOT RUNNING"
-      email.body    = "NAME SERVER NOT RUNNING\n\n.\n"
 
 -- *********************************************************************
 
-function check_nameserver()
+function check_nameserver(params)
   local pidfile = io.open(namedpid,"r")
   if pidfile == nil then
     I_log("crit","NAME SERVER NOT RUNNING (crash?)")
-    send_email(email)
+    send_email{
+    	from    = params.from    or "root@conman.org",
+    	to      = params.to      or "spc@conman.org",
+    	subject = params.subject or "NAME SERVER NOT RUNNING (crash?)",
+    	body    = params.body    or "NAME SERVER NOT RUNNING"
+    }
     return
   end
 
@@ -46,7 +46,12 @@ function check_nameserver()
   local exefile = io.open("/proc/" .. pid)
   if exefile == nil then
     I_log("crit","NAME SERVER NOT RUNNING")
-    send_email(email)
+    send_email{
+    	from    = params.from    or "root@conman.org",
+    	to      = params.to      or "spc@conman.org",
+    	subject = params.subject or "NAME SERVER NOT RUNNING",
+    	body    = params.body    or "NAME SERVER NOT RUNNING"
+    }
     return
   end   
 
