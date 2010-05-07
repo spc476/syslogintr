@@ -102,6 +102,7 @@ function postfix_mailsummary(msg)
     if email.client == nil then email.client = "(na)" end
     if email.from   == nil then email.from   = ""     end
     if email.to     == nil then email.to     = "(na)" end
+    if email.id     == nil then email.id     = "<na>" end
 
     msg.program = 'summary/mail'
     msg.msg     = string.format(
