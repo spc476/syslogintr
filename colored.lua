@@ -58,7 +58,7 @@ function log(msg)
 	msg.program,
 	msg.facility,
 	msg.level,
-	os.date("%b %d %H:%M:%S",msg.timestamp),
+	"|", -- os.date("%b %d %H:%M:%S",msg.timestamp),
 	msg.msg
 	))
   io.stdout:flush()
