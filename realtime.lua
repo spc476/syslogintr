@@ -19,7 +19,23 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
-
+--
+-- This program is meant to be run in real time to view logs as they come
+-- in.  The primary syslogintr on the network relays the logs to a multicast
+-- address, so any client on the segment can get the logs.  This script can
+-- then be used to listen on that multicast address and print the logs as
+-- they are received.
+--
+-- One syslogintr on the network does a relay(239.255.0.1,msg) 
+-- I run another syslogintr on the network:
+--
+-- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua | less -S
+-- 	or
+-- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua | cut -b 1-width
+--
+-- Makes for a pretty display.
+--
+-- *********************************************************************
 
 -- cut -b 1-187 (to account for XTERM escape sequences)
 --io.stdout:write("\27[2J")	-- clear screen to black
