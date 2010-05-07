@@ -133,6 +133,8 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#define VERSION		"0.9"
+
 #define MAX_FACILITY	24
 #define MAX_LEVEL	 8
 #define MAX_SOCKETS	18
@@ -196,6 +198,7 @@ enum
   OPT_PATH	= 'p',
   OPT_CPATH	= 'c',
   OPT_HELP	= 'h',
+  OPT_VERSION   = 'v',
   OPT_ERR       = '?'
 };
 
@@ -357,25 +360,26 @@ List                 g_intlog;
 
 const struct option c_options [] =
 {
-  { "foreground"   , no_argument       , NULL		, OPT_FG        } ,
-  { "ip"	   , no_argument       , NULL		, OPT_IPv4	} ,
-  { "ip4"	   , no_argument       , NULL		, OPT_IPv4	} ,
-  { "ipv4"	   , no_argument       , NULL		, OPT_IPv4	} ,
-  { "ipaddr"       , required_argument , NULL		, OPT_IPv4int	} ,
-  { "ip4addr"	   , required_argument , NULL		, OPT_IPv4int	} ,
-  { "ipv4addr"	   , required_argument , NULL		, OPT_IPv4int	} ,
-  { "ip6"	   , no_argument       , NULL		, OPT_IPv6	} ,
-  { "ipv6"	   , no_argument       , NULL		, OPT_IPv6	} ,
-  { "ip6addr"	   , required_argument , NULL		, OPT_IPv6int	} ,
-  { "ipv6addr"     , required_argument , NULL		, OPT_IPv6int   } ,
-  { "local"	   , no_argument       , NULL		, OPT_LOCAL     } ,
-  { "socket"	   , required_argument , NULL		, OPT_SOCKET	} ,
-  { "user"	   , required_argument , NULL	        , OPT_USER      } ,
-  { "group"        , required_argument , NULL           , OPT_GROUP     } ,
-  { "lua-path"	   , required_argument , NULL		, OPT_PATH	} ,
-  { "lua-cpath"    , required_argument , NULL		, OPT_CPATH	} ,
-  { "help"         , no_argument       , NULL           , OPT_HELP      } ,
-  { NULL           , 0                 , NULL           , 0             }
+  { "foreground"	, no_argument		, NULL	, OPT_FG        } ,
+  { "version"		, no_argument		, NULL	, OPT_VERSION	} ,
+  { "ip"		, no_argument		, NULL	, OPT_IPv4	} ,
+  { "ip4"		, no_argument		, NULL	, OPT_IPv4	} ,
+  { "ipv4"		, no_argument		, NULL	, OPT_IPv4	} ,
+  { "ipaddr"		, required_argument	, NULL	, OPT_IPv4int	} ,
+  { "ip4addr"		, required_argument 	, NULL	, OPT_IPv4int	} ,
+  { "ipv4addr"		, required_argument 	, NULL	, OPT_IPv4int	} ,
+  { "ip6"		, no_argument		, NULL	, OPT_IPv6	} ,
+  { "ipv6"		, no_argument		, NULL	, OPT_IPv6	} ,
+  { "ip6addr"		, required_argument	, NULL	, OPT_IPv6int	} ,
+  { "ipv6addr"		, required_argument	, NULL	, OPT_IPv6int   } ,
+  { "local"		, no_argument		, NULL	, OPT_LOCAL     } ,
+  { "socket"		, required_argument	, NULL	, OPT_SOCKET	} ,
+  { "user"		, required_argument	, NULL	, OPT_USER      } ,
+  { "group"		, required_argument	, NULL	, OPT_GROUP     } ,
+  { "lua-path"		, required_argument	, NULL	, OPT_PATH	} ,
+  { "lua-cpath"		, required_argument	, NULL	, OPT_CPATH	} ,
+  { "help"		, no_argument		, NULL	, OPT_HELP      } ,
+  { NULL		, 0			, NULL	, 0             }
 };
 
 const char *const c_facility[] = 
@@ -1110,13 +1114,16 @@ Status globalv_init(int argc,char *argv[])
   
   while(true)
   {
-    switch(getopt_long(argc,argv,"fP46lhu:g:s:p:c:i:I:",c_options,&option))
+    switch(getopt_long(argc,argv,"vfP46lhu:g:s:p:c:i:I:",c_options,&option))
     {
       default:
       case OPT_ERR:
            fprintf(stderr,"unknown option '%c'\n",optopt);
       case OPT_HELP:
            usage(argv[0]);
+           return retstatus(false,0,"");
+      case OPT_VERSION:
+           fprintf(stderr,"%s " VERSION "\n",basename(argv[0]));
            return retstatus(false,0,"");
       case OPT_NONE: 
            break;
@@ -1217,6 +1224,7 @@ void usage(const char *progname)
         "\t-g | --group <groupname>        group to run as (no default)\n"
         "\t-p | --lua-path <path>          add path to Lua package.path\n"
         "\t-c | --lua-cpath <path>         add path to Lua package.cpath\n"
+        "\t-v | --version                  print version (" VERSION ") and quit\n"
         "\t-h | --help                     this message\n"
         "\n"
         "\t" LUA_CODE "\tdefault luafile\n"
