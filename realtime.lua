@@ -29,17 +29,13 @@
 -- One syslogintr on the network does a relay(239.255.0.1,msg) 
 -- I run another syslogintr on the network:
 --
--- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua | less -S
--- 	or
--- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua | cut -b 1-width
+-- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua 
 --
 -- Makes for a pretty display.
 --
 -- *********************************************************************
 
--- cut -b 1-187 (to account for XTERM escape sequences)
---io.stdout:write("\27[2J")	-- clear screen to black
---io.stdout:flush()
+require "colortty"
 
 --[[
 if logfiles == nil then
@@ -67,16 +63,18 @@ colors =
 }
 
 function log(msg)
-  io.stdout:write(string.format(
-	"%s%15.15s %-15.15s %-6s %6s %s %s\n",
+  local bar = string.format("\27[1;39m|%s",colors[msg.level])
+  io.stdout:write(colortty(string.format(
+	"%s%15.15s %-15.15s %-6s %6s %s %s",
 	colors[msg.level],
 	msg.host,
 	msg.program,
 	msg.facility,
 	msg.level,
-	"|", -- os.date("%b %d %H:%M:%S",msg.timestamp),
+	bar, -- os.date("%b %d %H:%M:%S",msg.timestamp),
 	msg.msg
-	))
+	)))
+  io.stdout:write("\n")
   io.stdout:flush()
   
   --logfiles[msg.host]:write(string.format("%s\n",msg._RAW))
