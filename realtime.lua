@@ -37,19 +37,6 @@
 
 require "colortty"
 
---[[
-if logfiles == nil then
-  logfiles = {}
-  logfiles = setmetatable({},{
-  	__index = function(t,k)
-  	  local fname = "/tmp/logs/" .. k
-  	  t[k] = io.open(fname,"a")
-  	  return t[k]
-  	end
-  	})
-end
---]]
-
 colors =
 {
   emerg  = "\27[1;31m",
@@ -64,6 +51,7 @@ colors =
 
 function log(msg)
   local bar = string.format("\27[1;39m|%s",colors[msg.level])
+
   io.stdout:write(colortty(string.format(
 	"%s%15.15s %-15.15s %-6s %6s %s %s",
 	colors[msg.level],
@@ -74,9 +62,7 @@ function log(msg)
 	bar, -- os.date("%b %d %H:%M:%S",msg.timestamp),
 	msg.msg
 	)))
+
   io.stdout:write("\n")
   io.stdout:flush()
-  
-  --logfiles[msg.host]:write(string.format("%s\n",msg._RAW))
-  --logfiles[msg.host]:flush()
 end
