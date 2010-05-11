@@ -1,6 +1,5 @@
 
-I've yet to officially release this yet, so there isn't much in the way of
-documentation.  There's some here: http://boston.conman.org/2010/02/09.1 but
+There's more documentation here: http://boston.conman.org/2010/02/09.1 but
 most of the documentation exists in the source code.  A good place to start
 is with syslogintr.c to get a feel for how the code works.  Included are
 quite a few sample scripts, some of which are in production.  These scripts
@@ -47,6 +46,12 @@ are:
 			will also check the kernel resources and logs any
 			information it finds.
 
+	realtime.lua
+
+			This script is meant to be run with syslogintr in
+			the foreground.  It displays the messages it
+			receives in realtime.  Fun to watch.
+
 	redhat.lua
 
 			A script to act as a (more-or-less) drop-in
@@ -74,6 +79,14 @@ are:
 
 			Another testing script.
 
+	testbed.lua
+
+			Used to test the various scripts here.  It does not
+			require syslogintr to be running---instead it feeds
+			192 test messages (each facility, each priority) to
+			the user supplied log() function, and calls
+			cleanup() if it exists.
+
 	using.lua
 
 			This is the script running on my workstation.  I
@@ -94,6 +107,64 @@ are:
 			messages, although at this time, I don't really do
 			any processing of the received messages.
 
-The individual Lua files could be cleaned up, but I'm still exploring the
-capabilities and the ones in heavy use tend to get patched as issues come
-up.
+The various modules undet the modules/ directory:
+
+	I_log.lua
+
+			Supplies a few routines to log from within the
+			scripts themselves.
+
+	check_apache.lua
+
+			Logs stats from Apache (requires mod_status),
+			othersise, sends an email notification that Apache
+			isn't running.
+
+	check_bind.lua
+
+			Checks to see if named is running (uses the Linux
+			/proc filesystem for this), and if it isn't, sends
+			an email notification that named isn't running.
+
+	check_ospf.lua
+
+			Checks to see if the message is from a Cisco router
+			and is an OSPF neighbor state change.  Sends an
+			email notification if that is indeed the case.
+
+	colortty.c
+
+			Lua module to cut strings to the width of the tty.
+			Used by realtime.lua to implement a realtime display
+			of syslog messages.
+
+	deltatime.lua
+
+			Utility routine to format a time difference.
+
+	hostcounts.lua
+
+			Keeps track of hosts that send log messages.
+
+	log_beancounter.lua
+
+			Logs stats from an OpenVZ instance.
+
+	postfix-mailsummary.lua
+
+			Convert multiple Postfix log messages into one
+			summary log message.
+
+	sendmail.lua
+
+			Module to send an email.
+
+	ssh-iptables.lua
+
+			Linux specific:  block SSH attempts using iptables.
+
+	template.lua
+
+			Utility routine to format output according to a 
+			template.
+
