@@ -90,7 +90,7 @@ end
 function reload_signal()
   log{
   	host      = "(internal)",
-  	program   = "minsys",
+  	program   = script	-- "script" contains the script name
   	facility  = "syslog",
   	level     = "debug",
   	timestamp = os.time(),
@@ -119,7 +119,7 @@ end
 function alarm_handler()
   log{
   	host      = "(internal)",
-  	program	  = script,	-- "script" contains the script name
+  	program	  = script,
   	facility  = "syslog",
   	level     = "debug",
   	timestamp = os.time(),
@@ -134,7 +134,7 @@ end
 function cleanup()
   log{
   	host      = "(internal)",
-  	program   = "minsys",
+  	program   = script,
   	facility  = "syslog",
   	level     = "debug",
   	timestamp = os.time(),

@@ -76,7 +76,7 @@ function open_files()
   logfiles.local5 = io.open("/var/log/local5.log","a")
   logfiles.local6 = io.open("/var/log/local6.log","a")
   logfiles.local0 = io.open("/var/log/local.log" ,"a")
-  logfiles.user   = io.open("/var/log/misc.log","a")
+  logfiles.user   = io.open("/var/log/misc.log",  "a")
 
   logfiles.local1 = logfiles.local0
   logfiles.local2 = logfiles.local0
