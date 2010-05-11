@@ -18,6 +18,14 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- This is running on a management server at work, accepting log messages
+-- from various routers.  Because of that, I check for certain router
+-- messages, notably changes in OSPF neighbors and send notification emails.
+--
+-- I also convert a bunch of thin logs from Postfix into one fat log message.
+--
+-- ************************************************************************
 
 require "I_log"
 require "check_ospf"

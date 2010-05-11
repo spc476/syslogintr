@@ -18,6 +18,14 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- Keep a count of the remote hosts sending in log messages.  
+--
+-- inc_hostcount(host)		-- call for each message received
+-- log_hostcounts()		-- call to log number of msgs from each host.
+--				   The counters are reset to 0.
+--
+-- ***********************************************************************
 
 require "I_log"
 

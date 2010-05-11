@@ -17,8 +17,6 @@
 --
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
--- ********************************************************************
-
 -- *****************************************************************
 --
 -- Program to print out each field and make sure we're parsing the

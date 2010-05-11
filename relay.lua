@@ -18,6 +18,12 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- A simple example of relaying logs to another host, as well as keeping
+-- a local copy of each message.  The format for this local logfile isn't
+-- standard, but it's a format I like that's easy to read.
+--
+-- **********************************************************************
 
 homebase = host("lucy.roswell.conman.org")
 if logfile == nil then

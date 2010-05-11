@@ -18,6 +18,11 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- One of the servers I manage is under OpenVZ.  This just logs the current
+-- resource usage on such a server.
+--
+-- *************************************************************************
 
 require "I_log"
 

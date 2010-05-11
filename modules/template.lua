@@ -18,6 +18,28 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- A simple template processor.  
+-- 
+-- template(text,callbacks,data)
+--
+--	text 		-- string that is the template
+--	callbacks	-- replacement values
+--	data		-- block (not touched by template()) that can be used
+--			   for user specific data
+--
+-- Example usage:
+--	body = "Hello %{name}%, you have called %{times}% times."
+--	callbacks = 
+--	{
+--		name = "Sean Conner",
+--		times = function(data) return tostring(data) end
+--	}
+--	times_called = 1
+--
+--	print(template(body,callbacks,times_called))
+--
+-- **********************************************************************
 
 function template(text,callbacks,data)
   local function cmd(tag)

@@ -18,6 +18,21 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- Check to see if named is running (yes, I have a machine where named
+-- stops running.  I know why it happens, but I can't fix it (long story).
+-- Anyway, checks to see if named is running on a Linux system (or at least
+-- a Unix system that suports the /proc filesystem).  If it's not running,
+-- an email notification is sent.
+--
+-- params is a table with the following optional fields:
+--
+--	params.from		-- From: address
+--	params.to		-- To: address (can be an array of addresses)
+--	params.subject		-- Subject: line
+--	params.body		-- body of the email
+--
+-- **********************************************************************
 
 require "I_log"
 require "sendmail"

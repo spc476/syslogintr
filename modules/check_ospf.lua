@@ -18,6 +18,17 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- Check OSPF messages from Cisco routers, and send an email whenever an
+-- OSPF neighbor goes up or down.
+--
+-- check_ospf(msg,params)
+--	msg 		-- syslog message as received
+--	params 		-- optional parameters
+--		params.from	-- From: address
+--		params.to	-- To: address (can be an array)
+--
+-- *********************************************************************
 
 require "template"
 require "sendmail"

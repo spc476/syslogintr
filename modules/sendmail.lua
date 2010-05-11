@@ -18,6 +18,18 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- Send an email.  
+--
+-- send_email(email)
+--
+--	email 		-- table with the following fields (all required):
+--		email.from		-- From: address
+--		email.to		-- To: address (can be an array)
+--		email.subject		-- Subject: line
+--		email.body		-- body of email
+--
+-- *********************************************************************
 
 require "I_log"
 

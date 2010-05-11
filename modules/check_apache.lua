@@ -18,6 +18,24 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- Pull stats from a locally running Apache instance.  The stats are pulled
+-- from Apache's mod_status (so to use this script, you'll need to set that
+-- module up in Apache).  If it can't grab the stats from Apache, a notification
+-- email is sent.  
+-- 
+-- params is a table with the following fields (all optional):
+--
+--	params.user		-- username for web authentication
+--	params.password		-- password
+--	params.from		-- email From: address
+--	params.to		-- email To: address (can be an array)
+--	params.subject		-- email Subject: line
+--	params.body		-- text of the email message
+--
+-- This module requires the use of "wget".
+-- 
+-- *********************************************************************
 
 require "I_log"
 require "deltatime"

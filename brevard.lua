@@ -17,7 +17,18 @@
 --
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
--- ********************************************************************
+-- ***************************************************************************
+--
+-- This file is the one I'm using on my private server.  Several years ago I
+-- diverted from the RedHat standard syslog files to my own, and I kept that
+-- system here.  I also direct the logs to my home system so I can monitor
+-- the logs in real time (see realtime.lua).
+--
+-- I also convert several thin Postfix logs to one fat log (summary).
+-- 
+-- This configuration is pretty straight forward.
+--
+-- ***************************************************************************
 
 require "I_log"
 require "deltatime"

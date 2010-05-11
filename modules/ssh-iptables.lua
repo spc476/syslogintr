@@ -18,6 +18,18 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- collect logs from ssh, and if there are 5 fail attempts at logging in,
+-- block the offending IP address.  
+--
+-- sshd(msg)		-- check for ssh messages and track failed logins
+-- sshd_remove()	-- periodically call this to remove old blocked IP
+--			   addresses
+--
+-- This module assume the use of iptables.  It also adds rules to the
+-- main chain.  This should be fixed.
+--
+-- ***********************************************************************
 
 require "I_log"
 

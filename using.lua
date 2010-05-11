@@ -18,6 +18,13 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- This is one (of two) scripts I run at home.  This is the primary script
+-- that blocks repeated SSH attempts and also relays all the logs to a
+-- multicast address.  The other script I run is realtime.lua (another
+-- instance of syslogintr) so that I can view the logs in realtime.
+--
+-- ************************************************************************
 
 require "I_log"
 require "hostcounts"

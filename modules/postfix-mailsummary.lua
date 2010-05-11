@@ -18,6 +18,12 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
+--
+-- Postfix logs several messages per email (thin logging).  This module
+-- will collect those messages and once all the logs for an individual
+-- email have been collected, a summary (fat logging) is generated.
+--
+-- *********************************************************************
 
 if maillist == nil then	-- protect against reloading
   maillist = {}		-- used to store loglines as they come in

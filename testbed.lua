@@ -19,7 +19,13 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
-
+--
+-- A simple test harness, that tests a Lua syslogintr script from the
+-- localhost, with every possible combination of priority and facility
+-- (192 tests total). You do not need to be running the main executable
+-- to run this test.
+--
+-- *********************************************************************** 
 
 if #arg == 0 then
   scriptpath = "/usr/local/sbin/syslog.lua"

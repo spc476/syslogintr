@@ -17,7 +17,16 @@
 --
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
--- ********************************************************************
+-- **************************************************************************
+--
+-- This is running on one of the servers at work.  It's a virtual server
+-- under OpenVZ, so we log the beancounters every hour.  Also, there's an
+-- issue with the webserver, so we log stats every hour for that, plus send
+-- an email if it's not running.
+--
+-- This is a modified version of the redhat.lua script.
+--
+-- **************************************************************************
 
 require "I_log"
 require "check_apache"

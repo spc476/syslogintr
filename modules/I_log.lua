@@ -17,8 +17,6 @@
 --
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
--- ********************************************************************
-
 -- *******************************************************************
 --
 -- function to locally log syslog-esque messages.

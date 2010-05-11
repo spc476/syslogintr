@@ -17,20 +17,20 @@
 --
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
--- ********************************************************************
-
 -- ******************************************************************
--- * A file the duplicates a default install of RedHat and their
--- * syslog.conf file.  All functions not labeled as "local" are called
--- * directly via the runtime engine.  
--- *
--- * cleanup()		- called when the daemon exits
--- * reload_signal()	- called when the program recieves a SIGHUP
--- * log()		- called each time the daemon receives a message
--- * 
--- * This is provided as a means to replace syslogd with a drop in
--- * replacement, but with the ability to expand upon the functionality
--- * as required.
+--
+-- A file the duplicates a default install of RedHat and their syslog.conf
+-- file.  All functions not labeled as "local" are called directly via the
+-- runtime engine.
+-- 
+-- cleanup()		- called when the daemon exits
+-- reload_signal()	- called when the program recieves a SIGHUP
+-- log()		- called each time the daemon receives a message
+--  
+-- This is provided as a means to replace syslogd with a drop in
+-- replacement, but with the ability to expand upon the functionality as
+-- required.
+--
 -- *******************************************************************
 
 function cleanup()
