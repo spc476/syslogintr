@@ -37,6 +37,7 @@ end
 
 function alarm(time) end
 function host(name) end
+function relay(where,msg) end
 
 dofile(scriptpath)
 
