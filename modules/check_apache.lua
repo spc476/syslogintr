@@ -88,7 +88,7 @@ function check_webserver(params)
 	}
     I_log("debug","past sending email")
   else  
-    I_prlog("check/httpd","info",msg)
+    I_prlog("check/httpd","notice",msg)
   end
 end
 
