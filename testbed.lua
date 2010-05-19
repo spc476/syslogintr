@@ -36,7 +36,8 @@ else
 end
 
 function alarm(time) end
-function host(name) end
+function host(name) return "localhost" end
+function relay(where,msg) end
 
 dofile(scriptpath)
 
@@ -57,9 +58,15 @@ function test_levels(msg)
   			"warn"  , "notice" , "info"  , "debug" 
   		 }
 
+  local err,result
+  
   for i = 1 , #levels do
     msg.level = levels[i]
-    log(msg)
+    err,result = pcall(log,msg)
+    if err then
+      print(result)
+      return
+    end
   end
 end
 
