@@ -98,7 +98,7 @@ function log(msg)
       return
     end
 
-    if msg.program == 'gld' then return end
+    if msg.program == 'gld-pfc' then return end
     msg.host = "brevard"
   end
 
