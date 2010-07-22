@@ -52,7 +52,7 @@ function log(msg)
   local bar = string.format("\27[1;39m|%s",colors[msg.level])
 
   io.stdout:write(colortty(string.format(
-	"%s%15.15s %-15.15s %-6s %6s %s %s",
+	"%s%15.15s %-15.15s %-6s %6s %s %s\n",
 	colors[msg.level],
 	msg.host,
 	msg.program,
@@ -61,7 +61,5 @@ function log(msg)
 	bar, -- os.date("%b %d %H:%M:%S",msg.timestamp),
 	msg.msg
 	)))
-
-  io.stdout:write("\n")
   io.stdout:flush()
 end

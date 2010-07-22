@@ -69,11 +69,10 @@ static void handler_sigwinch(int sig)
 
 static int colortty(lua_State *L)
 {
-  char        buffer[BUFSIZ + 1];
   const char *txt;
   size_t      len;
   size_t      cnt;
-  size_t      max;
+  size_t      size;
 
   if (mf_sigwinch && mf_tty)
   {
@@ -87,14 +86,23 @@ static int colortty(lua_State *L)
     mf_sigwinch = 0;
   }
 
-  txt = luaL_checkstring(L,1);
+  txt = luaL_checklstring(L,1,&size);
   len = 0;
   cnt = 0;
-  max = m_width;
-    
-  while(*txt && (cnt < max) && (len < BUFSIZ))
+  
+  char buffer[size + 1];
+  
+  while(*txt)
   {
-    if (*txt == '\0') break;
+    if (*txt == '\n')
+      cnt = 0;
+    
+    if (cnt == m_width)
+    {
+      txt++;
+      continue;
+    }
+    
     if (*txt == 0x1B)
     {
       buffer[len++] = *txt++;
@@ -107,7 +115,7 @@ static int colortty(lua_State *L)
       buffer[len++] = *txt++;
       continue;
     }
-    
+        
     if ((unsigned char)*txt == 0x9B)
     {
       buffer[len++] = *txt++;
@@ -117,7 +125,7 @@ static int colortty(lua_State *L)
       continue;
     }
     
-    cnt ++;
+    cnt++;
     buffer[len++] = *txt++;
   }
   

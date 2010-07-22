@@ -50,12 +50,11 @@ colors =
 
 function log(msg)
   io.stdout:write(colortty(string.format(
-  	"%s%15.15s \27[1;39m|%s %s",
+  	"%s%15.15s \27[1;39m|%s %s\n",
   	colors[msg.level],
   	msg.host,
   	colors[msg.level],
   	msg._RAW
   )))
-  io.stdout:write("\n")
   io.stdout:flush()
 end
