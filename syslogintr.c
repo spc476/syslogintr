@@ -220,6 +220,7 @@ typedef union sockaddr_all
 typedef struct socket_node
 {
   int          sock;
+  socklen_t    len;
   sockaddr_all local;
 } *SocketNode;
 
@@ -280,6 +281,7 @@ Status		 set_signal_handler	(int,void (*)(int));
 int		 syslogintr_alarm	(lua_State *);
 int		 syslogintr_ud__toprint	(lua_State *);
 int		 syslogintr_host	(lua_State *);
+int		 syslogintr_lsock	(lua_State *);
 int		 syslogintr_relay	(lua_State *);
 void		 call_optional_luaf	(const char *);
 void		 internal_log		(int,const char *,...);
@@ -487,6 +489,7 @@ int main(int argc,char *argv[])
 
   lua_register(g_L,"alarm",syslogintr_alarm);
   lua_register(g_L,"host", syslogintr_host);
+  lua_register(g_L,"lsock",syslogintr_lsock);
   lua_register(g_L,"relay",syslogintr_relay);
 
   /*--------------------------------------------------
@@ -677,6 +680,7 @@ Status create_socket(SocketNode listen,socklen_t saddr)
   assert(listen != NULL);  
   assert(saddr  >  0);
   
+  listen->len  = saddr;
   listen->sock = socket(listen->local.ss.sa_family,SOCK_DGRAM,0);
   
   if (setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse)) == -1)
@@ -1526,22 +1530,26 @@ int syslogintr_alarm(lua_State *L)
 
 int syslogintr_ud__toprint(lua_State *L)
 {
-  sockaddr_all *paddr;
-  char          taddr[BUFSIZ];
-  const char   *r;
+  SocketNode  paddr;
+  char        taddr[BUFSIZ];
+  const char *r;
   
   assert(L != NULL);
   
   paddr = luaL_checkudata(L,1,LUA_UD_HOST);
   lua_pop(L,1);
   
-  switch(paddr->ss.sa_family)
+  switch(paddr->local.ss.sa_family)
   {
     case AF_INET:  
-         r = inet_ntop(AF_INET, &paddr->sin.sin_addr.s_addr,taddr,BUFSIZ);
+         r = inet_ntop(AF_INET, &paddr->local.sin.sin_addr.s_addr,taddr,BUFSIZ);
          break;
     case AF_INET6: 
-         r = inet_ntop(AF_INET6,&paddr->sin6.sin6_addr.s6_addr,taddr,BUFSIZ);
+         r = inet_ntop(AF_INET6,&paddr->local.sin6.sin6_addr.s6_addr,taddr,BUFSIZ);
+         break;
+    case AF_LOCAL:
+         memcpy(taddr,paddr->local.ssun.sun_path,sizeof(paddr->local.ssun.sun_path));
+         r = taddr;
          break;
     default: 
          lua_pushnil(L);
@@ -1563,8 +1571,7 @@ int syslogintr_host(lua_State *L)
   const char      *hostname;
   struct addrinfo  hints;
   struct addrinfo *results;
-  sockaddr_all    *paddr;
-  size_t           size;
+  SocketNode       paddr;
   int              rc;
   
   assert(L != NULL);
@@ -1585,10 +1592,18 @@ int syslogintr_host(lua_State *L)
     return 1;
   }
   
+  paddr = lua_newuserdata(L,sizeof(struct socket_node));
+  
   switch(results[0].ai_addr->sa_family)
   {
-    case AF_INET:  size = sizeof(struct sockaddr_in);  break;
-    case AF_INET6: size = sizeof(struct sockaddr_in6); break;
+    case AF_INET:  
+         paddr->len  = sizeof(struct sockaddr_in);
+         paddr->sock = socket(AF_INET, SOCK_DGRAM,0); 
+         break;
+    case AF_INET6: 
+         paddr->len  = sizeof(struct sockaddr_in6);
+         paddr->sock = socket(AF_INET6,SOCK_DGRAM,0); 
+         break;
     default: 
          internal_log(LOG_WARNING,"unexpected family for address");
          freeaddrinfo(results);
@@ -1596,11 +1611,50 @@ int syslogintr_host(lua_State *L)
          return 1;
   }
     
-  paddr = lua_newuserdata(L,size);
   luaL_getmetatable(L,LUA_UD_HOST);
   lua_setmetatable(L,-2);
-  memcpy(paddr,results[0].ai_addr,size);
+  memcpy(&paddr->local,results[0].ai_addr,results[0].ai_addrlen);
   freeaddrinfo(results);
+  return 1;
+}
+
+/************************************************************************/
+
+int syslogintr_lsock(lua_State *L)
+{
+  SocketNode paddr;
+  const char *unixsocket;
+  size_t      ussize;
+  int         sock;
+  
+  unixsocket = luaL_checklstring(L,1,&ussize);
+  lua_pop(L,1);
+  
+  if (ussize > sizeof(paddr->local.ssun.sun_path))
+  {
+    internal_log(LOG_WARNING,"socket path too long");
+    lua_pushnil(L);
+    return 1;
+  }
+  
+  sock = socket(AF_LOCAL,SOCK_DGRAM,0);
+  if (sock == -1)
+  {
+    internal_log(LOG_ERR,"socket() = %s",strerror(errno));
+    lua_pushnil(L);
+    return 1;
+  }
+  
+  paddr                        = lua_newuserdata(L,sizeof(struct socket_node));
+  paddr->local.ssun.sun_family = AF_LOCAL;
+  paddr->len                   = sizeof(struct sockaddr_un);
+  paddr->sock                  = sock;  
+  memset(paddr->local.ssun.sun_path,0,sizeof(paddr->local.ssun.sun_path));
+  memcpy(paddr->local.ssun.sun_path,unixsocket,ussize);
+  
+  luaL_getmetatable(L,LUA_UD_HOST);
+  lua_setmetatable(L,-2);
+  
   return 1;
 }
 
@@ -1608,15 +1662,15 @@ int syslogintr_host(lua_State *L)
 
 int syslogintr_relay(lua_State *L)
 {
-  sockaddr_all *paddr;
-  struct msg    msg;
-  struct tm     stm;
-  char          date  [BUFSIZ];
-  char          output[BUFSIZ];
-  char         *p;
-  size_t        max;
-  size_t        size;
-  size_t        dummy;
+  SocketNode  paddr;
+  struct msg  msg;
+  struct tm   stm;
+  char        date  [BUFSIZ];
+  char        output[BUFSIZ];
+  char       *p;
+  size_t      max;
+  size_t      size;
+  size_t      dummy;
   
   assert(L != NULL);
   
@@ -1680,21 +1734,9 @@ int syslogintr_relay(lua_State *L)
     output[size] = '\0';
   }
   
-  if ((paddr->ss.sa_family == AF_INET) && (g_sockets[g_ipv4].sock > -1))
-  {
-    assert(g_sockets[g_ipv4].local.sin.sin_family == AF_INET);
-    if (sendto(g_sockets[g_ipv4].sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in)) == -1)
-      internal_log(LOG_ERR,"sendto(ipv4) = %s",strerror(errno));
-  }
-  else if ((paddr->ss.sa_family == AF_INET6) && (g_sockets[g_ipv6].sock > -1))
-  {
-    assert(g_sockets[g_ipv6].local.sin6.sin6_family == AF_INET6);
-    if (sendto(g_sockets[g_ipv6].sock,output,size,0,&paddr->ss,sizeof(struct sockaddr_in6)) == -1)
-      internal_log(LOG_ERR,"sendto(ipv6) = %s",strerror(errno));
-  }
-  else
-    internal_log(LOG_ERR,"can't relay---improper socket type");
-
+  if (sendto(paddr->sock,output,size,0,&paddr->local.ss,paddr->len) == -1)
+    internal_log(LOG_ERR,"sendto() = %s",strerror(errno));
+    
   /*----------------------------------------------------------------
   ; pop after we've used the data from Lua.  Since Lua does
   ; garbage collection, if we pop the parameters before we
