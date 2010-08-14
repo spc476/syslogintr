@@ -40,7 +40,11 @@ function log_hostcounts()
   
   for name,value in pairs(hostcount) do
     s = s .. string.format("%s:%d ",name,value)
-    hostcount[name] = 0
+    if hostcount[name] == 0 then
+      hostcount[name] = nil
+    else
+      hostcount[name] = 0
+    end
   end
   
   I_prlog("summary/hosts","info",s)
