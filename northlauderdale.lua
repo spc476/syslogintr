@@ -36,9 +36,10 @@ require "log_beancounter"
 
 function alarm_handler()
   check_webserver{
-	url = "http://localhost/server-status\?auto",
-        from = "root@northlauderdale.pickint.net",
-	to = { "spc@conman.org" , "spc@pickint.net" }
+	url     = "http://localhost/server-status\?auto",
+        from    = "root@northlauderdale.pickint.net",
+	to      = { "spc@conman.org" , "spc@pickint.net" },
+	subject = "NORTHLAUDERDALE WEBSEVER DOWN!"
   }
   log_bean()
 end

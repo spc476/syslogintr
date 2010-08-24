@@ -44,9 +44,10 @@ function alarm_handler()
   	to   = "spc@conman.org"
   }
   check_webserver{
-  	url  = "http://www.conman.org/server-status\?auto",
-  	from = "root@conman.org",
-  	to   = "spc@conman.org"
+  	url     = "http://www.conman.org/server-status\?auto",
+  	from    = "root@conman.org",
+  	to      = "spc@conman.org",
+  	subject = "WWW.CONMAN.ORG WEBSITE DOWN!"
   }
 end
 
