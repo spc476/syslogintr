@@ -70,7 +70,7 @@ function log(msg)
   -- for that.
   -- ====================================================
   
-  if msg.host == '192.168.1.16' or msg.host == 'fc00::3' then
+  if msg.host == '192.168.1.16' or msg.host == 'fc00::3' or msg.host == '192.168.1.18' then
     msg.program = string.match(msg.program,'^.*%s+(.*)')
   end
   
