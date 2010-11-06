@@ -30,6 +30,7 @@
 require "I_log"
 require "check_ospf"
 require "postfix-mailsummary"
+require "ssh-iptables"
 
 -- **********************************************************************
 
@@ -64,6 +65,13 @@ function open_files()
 end
 
 homebase = host("74.173.118.3")
+alarm("60m")
+
+-- **************************************************************
+
+function alarm_handler()
+  sshd_remove()
+end
 
 -- **************************************************************
 
@@ -89,6 +97,8 @@ function log(msg)
   else
     log_to_file(logfiles[msg.facility],msg)
   end
+
+  sshd(msg)
 
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
