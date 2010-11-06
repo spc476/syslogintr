@@ -30,6 +30,7 @@
 require "I_log"
 require "check_ospf"
 require "postfix-mailsummary"
+require "ssh-iptables"
 
 -- **********************************************************************
 
@@ -89,6 +90,8 @@ function log(msg)
   else
     log_to_file(logfiles[msg.facility],msg)
   end
+
+  sshd(msg)
 
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
