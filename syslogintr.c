@@ -203,9 +203,9 @@ enum
 
 typedef struct status
 {
-  bool  okay;
-  int   err;
-  char *msg;
+  bool        okay;
+  int         err;
+  const char *msg;
 } Status;
 
 typedef union sockaddr_all
@@ -326,7 +326,7 @@ static inline bool NodeValid(Node *const pn)
   return true;
 }
 
-static inline Status retstatus(bool okay,int err,char *msg)
+static inline Status retstatus(bool okay,int err,const char *msg)
 {
   assert(msg != NULL);
   
