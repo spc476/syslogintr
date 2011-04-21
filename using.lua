@@ -100,6 +100,11 @@ end
 -- *******************************************************
 
 function log_to_file(file,msg)
+  if msg.program == nil then
+    I_log("err","bad parse: " .. msg._RAW)
+    return
+  end
+
   file:write(string.format(
   		"%15.15s | %-15.15s | %-6s %6s | %s | %s\n",
   		msg.host,
