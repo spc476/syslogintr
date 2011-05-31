@@ -1255,7 +1255,14 @@ Status drop_privs(void)
   struct passwd *uresult;
   
   if (getpwnam_r(g_user,&uinfo,ubuffer,ubufsize,&uresult) != 0)
-    return retstatus(false,errno,"getpwnam_r()");
+  {
+    int err = errno;
+    
+    errno = 0;
+    uinfo.pw_uid = strtoul(g_user,NULL,10);
+    if (errno != 0)
+      return retstatus(false,errno,"getpwnam_r()");
+  }
   
   long gbufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
   if (gbufsize < 0) gbufsize = BUFSIZ;
@@ -1267,7 +1274,14 @@ Status drop_privs(void)
   if (g_group != NULL)
   {
     if (getgrnam_r(g_group,&ginfo,gbuffer,gbufsize,&gresult) != 0)
-      return retstatus(false,errno,"getgrnam_r()");
+    {
+      int err = errno;
+      
+      errno = 0;
+      ginfo.gr_gid = strtoul(g_group,NULL,10);
+      if (errno != 0)
+        return retstatus(false,errno,"getgrnam_r()");
+    }
   }
   else
     ginfo.gr_gid = uinfo.pw_gid;
