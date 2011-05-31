@@ -1264,7 +1264,7 @@ Status drop_privs(void)
   struct group  ginfo;
   struct group *gresult;
   
-  if (g_group == NULL)
+  if (g_group != NULL)
   {
     if (getgrnam_r(g_group,&ginfo,gbuffer,gbufsize,&gresult) != 0)
       return retstatus(false,errno,"getgrnam_r()");
