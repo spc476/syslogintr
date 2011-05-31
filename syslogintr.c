@@ -1302,12 +1302,12 @@ Status drop_privs(void)
   ; change our group id first, then user id.  If we drop user id first,
   ; we may not be able to change our group id!
   ;-------------------------------------------------------------------*/
-  
-  if (setgid(ginfo.gr_gid) == -1)
-    return retstatus(false,errno,"setgid()");
-  
-  if (setuid(uinfo.pw_uid) == -1)
-    return retstatus(false,errno,"getuid()");
+
+  if (setregid(ginfo.gr_gid,ginfo.gr_gid) == -1)
+    return retstatus(false,errno,"setregid()");
+    
+  if (setreuid(uinfo.pw_uid,uinfo.pw_uid) == -1)
+    return retstatus(false,errno,"getreuid()");
   
   internal_log(LOG_DEBUG,"dropped privs to %s:%s",g_user,g_group);
   return c_okay;
