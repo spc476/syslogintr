@@ -1545,7 +1545,7 @@ int syslogintr_alarm(lua_State *L)
 int syslogintr_ud__toprint(lua_State *L)
 {
   SocketNode  paddr;
-  char        taddr[BUFSIZ];
+  char        taddr[INET6_ADDRSTRLEN];
   const char *r;
   
   assert(L != NULL);
@@ -1556,10 +1556,10 @@ int syslogintr_ud__toprint(lua_State *L)
   switch(paddr->local.ss.sa_family)
   {
     case AF_INET:  
-         r = inet_ntop(AF_INET, &paddr->local.sin.sin_addr.s_addr,taddr,BUFSIZ);
+         r = inet_ntop(AF_INET, &paddr->local.sin.sin_addr.s_addr,taddr,INET6_ADDRSTRLEN);
          break;
     case AF_INET6: 
-         r = inet_ntop(AF_INET6,&paddr->local.sin6.sin6_addr.s6_addr,taddr,BUFSIZ);
+         r = inet_ntop(AF_INET6,&paddr->local.sin6.sin6_addr.s6_addr,taddr,INET6_ADDRSTRLEN);
          break;
     case AF_LOCAL:
          memcpy(taddr,paddr->local.ssun.sun_path,sizeof(paddr->local.ssun.sun_path));
@@ -1679,7 +1679,7 @@ int syslogintr_relay(lua_State *L)
   SocketNode  paddr;
   struct msg  msg;
   struct tm   stm;
-  char        date  [BUFSIZ];
+  char        date  [16];
   char        output[BUFSIZ];
   char       *p;
   size_t      max;
@@ -1712,7 +1712,7 @@ int syslogintr_relay(lua_State *L)
   msg.msg.text     = lua_tolstring(L,-1,&msg.msg.size);
   
   localtime_r(&msg.logtimestamp,&stm);
-  strftime(date,BUFSIZ,"%b %d %H:%M:%S",&stm);
+  strftime(date,sizeof(date),"%b %d %H:%M:%S",&stm);
 
   p   = output;
   max = BUFSIZ;
