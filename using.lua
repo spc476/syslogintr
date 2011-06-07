@@ -77,6 +77,16 @@ function log(msg)
   end
   
   -- =====================================================
+  -- Fix my router's message.  msg.program is actually
+  -- part of the messsage, not the program.
+  -- =====================================================
+  
+  if msg.host == '192.168.1.1' then
+    msg.msg = msg.program .. ": " .. msg.msg
+    msg.program = ""
+  end
+  
+  -- =====================================================
   -- I need the PID from the UPS drivers, so check for that
   -- and add to the msg
   -- =====================================================
