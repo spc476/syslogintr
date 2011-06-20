@@ -86,7 +86,7 @@ function open_files()
   logfiles.local7 = logfiles.local0
 end
 
-homebase = host("lucy.roswell.conman.org")
+homebase = host("74.173.118.3")
 
 -- **************************************************************
 
