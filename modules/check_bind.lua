@@ -51,6 +51,8 @@ function check_nameserver(params)
     	subject = params.subject or "NAME SERVER NOT RUNNING (crash?)",
     	body    = params.body    or "NAME SERVER NOT RUNNING"
     }
+    I_log("notice","Restarting named")
+    os.execute("/etc/init.d/named start")
     return
   end
 
@@ -66,6 +68,8 @@ function check_nameserver(params)
     	subject = params.subject or "NAME SERVER NOT RUNNING",
     	body    = params.body    or "NAME SERVER NOT RUNNING"
     }
+    I_log("notice","Restarting named")
+    os.execute("/etc/init.d/named start")
     return
   end   
 

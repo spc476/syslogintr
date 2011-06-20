@@ -87,6 +87,8 @@ function check_webserver(params)
 	body    = params.body    or "WEB SERVER NOT RUNNING"
 	}
     I_log("debug","past sending email")
+    I_log("notice","Restarting the webserver")
+    os.execute("/etc/init.d/httpd start")
   else  
     I_prlog("check/httpd","notice",msg)
   end
