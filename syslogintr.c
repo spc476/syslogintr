@@ -1242,8 +1242,6 @@ Status drop_privs(void)
   
   if (getpwnam_r(g_user,&uinfo,ubuffer,ubufsize,&uresult) != 0)
   {
-    int err = errno;
-    
     errno = 0;
     uinfo.pw_uid = strtoul(g_user,NULL,10);
     if (errno != 0)
@@ -1261,8 +1259,6 @@ Status drop_privs(void)
   {
     if (getgrnam_r(g_group,&ginfo,gbuffer,gbufsize,&gresult) != 0)
     {
-      int err = errno;
-      
       errno = 0;
       ginfo.gr_gid = strtoul(g_group,NULL,10);
       if (errno != 0)
