@@ -498,9 +498,8 @@ int main(int argc,char *argv[])
   ;---------------------------------------------------*/
   
   luaL_newmetatable(g_L,LUA_UD_HOST);
-  lua_pushliteral(g_L,"__tostring");
   lua_pushcfunction(g_L,syslogintr_ud__toprint);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"__tostring");
   lua_pop(g_L,1);
   
   if (g_lpath)
@@ -1034,57 +1033,44 @@ void process_msg(const struct msg *const pmsg)
   lua_getglobal(g_L,"log");
   lua_newtable(g_L);
   
-  lua_pushliteral(g_L,"version");
   lua_pushinteger(g_L,pmsg->version);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"version");
   
-  lua_pushliteral(g_L,"_RAW");
   lua_pushlstring(g_L,pmsg->raw.text,pmsg->raw.size);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"_RAW");
   
-  lua_pushliteral(g_L,"host");
   lua_pushlstring(g_L,pmsg->host.text,pmsg->host.size);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"host");
   
-  lua_pushliteral(g_L,"relay");
   lua_pushlstring(g_L,pmsg->relay.text,pmsg->relay.size);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"relay");
   
-  lua_pushliteral(g_L,"port");
   lua_pushinteger(g_L,pmsg->port);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"port");
   
-  lua_pushliteral(g_L,"remote");
   lua_pushboolean(g_L,pmsg->remote);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"remote");
     
-  lua_pushliteral(g_L,"timestamp");
   lua_pushinteger(g_L,pmsg->timestamp);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"timestamp");
   
-  lua_pushliteral(g_L,"logtimestamp");
   lua_pushinteger(g_L,pmsg->logtimestamp);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"logtimestamp");
   
-  lua_pushliteral(g_L,"program");
   lua_pushlstring(g_L,pmsg->program.text,pmsg->program.size);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"program");
   
-  lua_pushliteral(g_L,"pid");
   lua_pushinteger(g_L,pmsg->pid);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"pid");
   
-  lua_pushliteral(g_L,"facility");
   lua_pushstring(g_L,c_facility[pmsg->facility]);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"facility");
   
-  lua_pushliteral(g_L,"level");
   lua_pushstring(g_L,c_level[pmsg->level]);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"level");
   
-  lua_pushliteral(g_L,"msg");
   lua_pushlstring(g_L,pmsg->msg.text,pmsg->msg.size);
-  lua_settable(g_L,-3);
+  lua_setfield(g_L,-2,"msg");
   
   rc = lua_pcall(g_L,1,0,0);
   if (rc != 0)
