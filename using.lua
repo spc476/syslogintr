@@ -94,6 +94,16 @@ function log(msg)
   if msg.program == 'usbhid-ups' then
     msg.msg = string.format("pid = %d , %s",msg.pid,msg.msg)
   end
+  
+  -- ====================================================
+  -- skip logging anything from program 'com.apple.usbmuxd'
+  -- but do relay it ... 
+  -- ====================================================
+  
+  if msg.program == 'com.apple.usbmuxd' then
+    relay(logger,msg)
+    return
+  end
 
   inc_hostcount(msg.host)  
   log_to_file(logfile,msg)
