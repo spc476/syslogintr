@@ -36,6 +36,7 @@ require "ssh-iptables"
 
 function cleanup()
   logfiles.auth1:close()
+  logfiles.auth2:close()
   logfiles.mail:close()
   logfiles.daemon:close()
   logfiles.kern:close()
@@ -52,6 +53,7 @@ end
 function open_files()
   logfiles        = {}
   logfiles.auth1  = io.open("/var/log/auth.log",  "a")
+  logfiles.auth2  = io.open("/var/log/auth2.log", "a")
   logfiles.mail   = io.open("/var/log/mail.log",  "a")
   logfiles.daemon = io.open("/var/log/daemon.log","a")
   logfiles.kern   = io.open("/var/log/kern.log",  "a")
