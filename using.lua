@@ -73,7 +73,10 @@ function log(msg)
   if msg.host == '192.168.1.16' 
   or msg.host == 'fc00::3' 
   then
-    msg.program = string.match(msg.program,'^.*%s+(.*)')
+    local program = string.match(msg.program,'^.*%s+(.*)')
+    if program ~= nil then
+      msg.program = program
+    end
   end
   
   -- =====================================================
