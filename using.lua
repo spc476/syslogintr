@@ -108,6 +108,18 @@ function log(msg)
     return
   end
 
+  -- ====================================================
+  -- fix nagios logging messages
+  -- ====================================================
+
+  if msg.program == 'nagios' then
+    if msg.msg:match("Warning:") then
+      msg.level = 'warn'
+    elseif msg.msg:match(" ALERT:") then
+      msg.level = 'err'
+    end
+  end
+
   inc_hostcount(msg.host)  
   log_to_file(logfile,msg)
   sshd(msg)
