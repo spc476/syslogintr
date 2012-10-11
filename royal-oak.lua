@@ -78,6 +78,9 @@ end
 -- **************************************************************
 
 function log(msg)
+  if msg.host == '216.242.158.235' then
+    return
+  end
 
   if msg.facility == 'local0' and string.match(msg.msg,'UDP%: %[216%.82%.117%.164%]') then
     return
