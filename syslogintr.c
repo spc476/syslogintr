@@ -792,7 +792,8 @@ void event_read(SocketNode sock)
 void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const char *end)
 {
   struct msg msg;
-  char       host[BUFSIZ];
+  char       host[FILENAME_MAX];
+  char       laddr[FILENAME_MAX];
   struct tm  dateread;
   time_t     now;
   int        value;
