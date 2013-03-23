@@ -1845,6 +1845,9 @@ void internal_log(int priority,const char *format, ... )
   msg->host.text    = "(internal)";
   msg->host.size    = 10; /* yeah, I know ... */
   msg->port         = -1;
+  msg->laddr.text   = "(internal)";
+  msg->laddr.size   = 10;
+  msg->lport        = -1;
   msg->facility     =  5; /* LOG_SYSLOG --- see comment in syslog_interp() */
   msg->level        = priority;
   msg->msg.text     = buffer;
