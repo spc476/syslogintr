@@ -39,6 +39,8 @@
 *	host		string [4]
 *	relay		string  ("" if not available) [6]
 *	port		integer (-1 if not available) [5]
+*	localaddr	string [4][7]
+*	localport	integer (-1 if not available) [7]
 *
 * and then pass it to a Lua function called log().  That function can then
 * do whatever it wants with the information.
@@ -94,6 +96,10 @@
 *	is the case, then host will be set to the original source, and
 *	relay will be set to the device that sent us the message.  If
 *	the device was the original sender, then relay will be "".
+*
+* [7]	The information relates to the local socket.  Useful if you
+*	have a large number of listening sockets and need to filter
+*	on that information.
 ************************************************************************/
 
 #define _GNU_SOURCE
@@ -251,6 +257,8 @@ struct msg
   struct sysstring host;	  /* address of original sending host	*/
   struct sysstring relay;	  /* address of host that sent msg	*/
   int              port;	  /* UDP port of sending host		*/
+  struct sysstring laddr;         /* address of receiving host (us)     */
+  int              lport;         /* UDP port of receiving host (us)    */
   bool             remote;	  /* true if syslog from remote		*/
   time_t           timestamp;	  /* timestamp of received syslog	*/
   time_t           logtimestamp;  /* original timestamp 		*/
@@ -844,6 +852,29 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
     msg.port      = -1;
   }
   
+  if (ploc->ss.sa_family == AF_INET)
+  {
+    inet_ntop(AF_INET,&ploc->sin.sin_addr,laddr,INET_ADDRSTRLEN);
+    
+    msg.laddr.size = strlen(laddr);
+    msg.laddr.text = laddr;
+    msg.lport      = ntohs(ploc->sin.sin_port);
+  }
+  else if (ploc->ss.sa_family == AF_INET6)
+  {
+    inet_ntop(AF_INET6,&ploc->sin6.sin6_addr,laddr,INET6_ADDRSTRLEN);
+    
+    msg.laddr.size = strlen(laddr);
+    msg.laddr.text = laddr;
+    msg.lport      = ntohs(ploc->sin6.sin6_port);
+  }
+  else
+  {
+    msg.laddr.size = strlen(ploc->ssun.sun_path);
+    msg.laddr.text = ploc->ssun.sun_path;
+    msg.lport      = -1;
+  }
+  
   /*----------------------------------------------------------------------
   ; the use of explicit values for LOG_USER and LOG_NOTICE here is because
   ; the values defined are *not* the *direct* values---LOG_USER (in fact,
@@ -1027,6 +1058,7 @@ void process_msg(const struct msg *const pmsg)
   clean_string(pmsg->raw);
   clean_string(pmsg->host);
   clean_string(pmsg->relay);
+  clean_string(pmsg->laddr);
   clean_string(pmsg->program);
   clean_string(pmsg->msg);
 #endif
@@ -1051,7 +1083,13 @@ void process_msg(const struct msg *const pmsg)
   
   lua_pushboolean(g_L,pmsg->remote);
   lua_setfield(g_L,-2,"remote");
-    
+  
+  lua_pushlstring(g_L,pmsg->laddr.text,pmsg->laddr.size);
+  lua_setfield(g_L,-2,"localaddr");
+  
+  lua_pushinteger(g_L,pmsg->lport);
+  lua_setfield(g_L,-2,"localport");
+  
   lua_pushinteger(g_L,pmsg->timestamp);
   lua_setfield(g_L,-2,"timestamp");
   
