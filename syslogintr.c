@@ -138,7 +138,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-#define VERSION		"1.1.0"
+#define VERSION		"1.2.0"
 
 #define MAX_FACILITY	24
 #define MAX_LEVEL	 8
