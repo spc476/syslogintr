@@ -34,6 +34,8 @@ function log(msg)
 	host          = %s
 	relay         = %s
 	port          = %d
+	localaddr     = %s
+	localport     = %d
 	remote        = %s
 	timestamp     = %s
 	logtimestamp  = %s
@@ -49,6 +51,8 @@ function log(msg)
 	msg.host,
 	msg.relay,
 	msg.port,
+	msg.localaddr,
+	msg.localport,
 	tostring(msg.remote),
 	os.date("%c",msg.timestamp),
 	os.date("%c",msg.logtimestamp),
