@@ -154,6 +154,14 @@ The various modules undet the modules/ directory:
 		Convert multiple Postfix log messages into one summary log
 		message.
 
+	proftp-iptables.lua
+
+		Linux specific:  block ProFTPd attempts using iptables.  If
+		you are using this, please make sure you run
+
+			iptables -N proftp-block
+			iptables -A INPUT -p tcp --dport 21 -j ssh-block
+
 	sendmail.lua
 
 		Module to send an email.
