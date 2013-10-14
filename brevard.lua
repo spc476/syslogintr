@@ -35,6 +35,7 @@ require "deltatime"
 require "check_apache"
 require "check_bind"
 require "postfix-mailsummary"
+require "proftp-iptables"
 
 -- **********************************************************************
 
@@ -49,6 +50,7 @@ function alarm_handler()
   	to      = "spc@conman.org",
   	subject = "WWW.CONMAN.ORG WEBSITE DOWN!"
   }
+  proftp_remove()
 end
 
 -- **********************************************************************
@@ -63,6 +65,7 @@ function cleanup()
   logfiles.local6:close()
   logfiles.local0:close()
   logfiles.user:close()
+  proftp_cleanup()
 end
 
 -- *********************************************************************
@@ -108,6 +111,8 @@ function log(msg)
   else
     log_to_file(logfiles[msg.facility],msg)
   end
+
+  proftp(msg)
 
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
