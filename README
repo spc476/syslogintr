@@ -111,60 +111,63 @@ The various modules undet the modules/ directory:
 
 	I_log.lua
 
-			Supplies a few routines to log from within the
-			scripts themselves.
+		Supplies a few routines to log from within the scripts
+		themselves.
 
 	check_apache.lua
 
-			Logs stats from Apache (requires mod_status),
-			othersise, sends an email notification that Apache
-			isn't running.
+		Logs stats from Apache (requires mod_status), othersise,
+		sends an email notification that Apache isn't running.
 
 	check_bind.lua
 
-			Checks to see if named is running (uses the Linux
-			/proc filesystem for this), and if it isn't, sends
-			an email notification that named isn't running.
+		Checks to see if named is running (uses the Linux /proc
+		filesystem for this), and if it isn't, sends an email
+		notification that named isn't running.
 
 	check_ospf.lua
 
-			Checks to see if the message is from a Cisco router
-			and is an OSPF neighbor state change.  Sends an
-			email notification if that is indeed the case.
+		Checks to see if the message is from a Cisco router and is
+		an OSPF neighbor state change.  Sends an email notification
+		if that is indeed the case.
 
 	colortty.c
 
-			Lua module to cut strings to the width of the tty.
-			Used by realtime.lua to implement a realtime display
-			of syslog messages.
+		Lua module to cut strings to the width of the tty.  Used by
+		realtime.lua to implement a realtime display of syslog
+		messages.
 
 	deltatime.lua
 
-			Utility routine to format a time difference.
+		Utility routine to format a time difference.
 
 	hostcounts.lua
 
-			Keeps track of hosts that send log messages.
+		Keeps track of hosts that send log messages.
 
 	log_beancounter.lua
 
-			Logs stats from an OpenVZ instance.
+		Logs stats from an OpenVZ instance.
 
 	postfix-mailsummary.lua
 
-			Convert multiple Postfix log messages into one
-			summary log message.
+		Convert multiple Postfix log messages into one summary log
+		message.
 
 	sendmail.lua
 
-			Module to send an email.
+		Module to send an email.
 
 	ssh-iptables.lua
 
-			Linux specific:  block SSH attempts using iptables.
+		Linux specific:  block SSH attempts using iptables.  If you
+		are using this, please make sure you run
+
+			iptables -N ssh-block
+			iptables -A INPUT -p tcp --dport 22 -j ssh-block
 
 	template.lua
 
-			Utility routine to format output according to a 
-			template.
+		Utility routine to format output according to a 
+		template.
 
