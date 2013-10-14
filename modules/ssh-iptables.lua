@@ -33,9 +33,9 @@
 
 require "I_log"
 
-if blocked == nil then
-  blocked = {}
-  setmetatable(blocked,{ __index = function(t,k) return 0 end })
+if ssh_blocked == nil then
+  ssh_blocked = {}
+  setmetatable(ssh_blocked,{ __index = function(t,k) return 0 end })
   os.execute("iptables --table filter -F ssh-block")
 end
 
@@ -52,14 +52,14 @@ function sshd(msg)
 
   I_log("debug","Found IP:" .. ip)
   
-  blocked[ip] = blocked[ip] + 1
+  ssh_blocked[ip] = ssh_blocked[ip] + 1
 
-  if blocked[ip] >= 5 then
+  if ssh_blocked[ip] >= 5 then
     local cmd = "iptables --table filter --append ssh-block --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
     I_log("debug","Command to block: " .. cmd)    
     os.execute(cmd)    
     I_log("info","Blocked " .. ip .. " from SSH")
-    table.insert(blocked,{ ip = ip , when = msg.timestamp} )
+    table.insert(ssh_blocked,{ ip = ip , when = msg.timestamp} )
   end
 end
 
@@ -68,25 +68,25 @@ end
 function sshd_remove()
   local now = os.time()
   
-  while #blocked > 0 do
-    if now - blocked[1].when < 3600 then return end
-    local ip = blocked[1].ip
+  while #ssh_blocked > 0 do
+    if now - ssh_blocked[1].when < 3600 then return end
+    local ip = ssh_blocked[1].ip
     I_log("info","Removing IP block: " .. ip)
-    blocked[ip] = nil
-    table.remove(blocked,1)
+    ssh_blocked[ip] = nil
+    table.remove(ssh_blocked,1)
     os.execute("iptables --table filter -D ssh-block 1")
   end
   
-  if #blocked > 0 then
-    I_log("debug",string.format("%d still blocked",#blocked))
+  if #ssh_blocked > 0 then
+    I_log("debug",string.format("%d still ssh_blocked",#ssh_blocked))
   end
 end
 
 -- ****************************************************************
 
 function sshd_cleanup()
-  blocked = {}
-  setmetatable(blocked,{ __index = function(t,k) return 0 end })
+  ssh_blocked = {}
+  setmetatable(ssh_blocked,{ __index = function(t,k) return 0 end })
   os.execute("iptables --table filter -F ssh-block")
 end
 
