@@ -143,14 +143,14 @@ function log_to_file(file,msg)
   end
 
   file:write(string.format(
-  		"%15.15s | %-15.15s | %-6s %6s | %s | %s\n",
-  		msg.host,
-  		msg.program,
-  		msg.facility,
-  		msg.level,
-  		os.date("%b %d %H:%M:%S",msg.timestamp),
-  		msg.msg
-  	))
+  	"%s\t%s\t%s\t%s\t%s\t%s\n",
+  	os.date("%b %d %H:%M:%S",msg.timestamp),
+  	msg.facility,
+  	msg.level,
+  	msg.host,
+  	msg.program,
+  	msg.msg
+  ))
   --file:flush()
 end
 
