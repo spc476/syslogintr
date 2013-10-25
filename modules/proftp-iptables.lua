@@ -50,7 +50,7 @@ function proftp(msg)
   if msg.facility ~= "daemon"  then return end
   if msg.level    ~= "notice"  then return end
 
-  local ip = string.match(msg.msg,"User %S: no such user found from ::ffff:([%d%.]+)")
+  local ip = string.match(msg.msg,"User %S+: no such user found from ::ffff:([%d%.]+)")
   if ip == nil then return end
 
   I_log("debug","Found IP:" .. ip)
