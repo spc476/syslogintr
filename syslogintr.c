@@ -535,7 +535,7 @@ int main(int argc,char *argv[])
 
   while(!mf_sigint)
   {
-    assert(lua_gettop(g_L) == 0);
+    lua_settop(g_L,0);
     
     if (mf_sigusr1)
     {
