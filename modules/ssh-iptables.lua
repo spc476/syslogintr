@@ -54,7 +54,7 @@ function sshd(msg)
   
   ssh_blocked[ip] = ssh_blocked[ip] + 1
 
-  if ssh_blocked[ip] >= 5 then
+  if ssh_blocked[ip] == 5 then
     local cmd = "iptables --table filter --append ssh-block --source " .. ip .. " --proto tcp --dport 22 --jump REJECT"
     I_log("debug","Command to block: " .. cmd)    
     os.execute(cmd)    
