@@ -58,7 +58,7 @@ function proftp(msg)
   proftp_blocked[ip] = proftp_blocked[ip] + 1
 
   if proftp_blocked[ip] == 5 then
-    local cmd = "iptables --table filter --append proftp-block --source " .. ip .. " --proto tcp --dport 21 --jump REJECT"
+    local cmd = "iptables --table filter --append proftp-block --source " .. ip .. " --jump REJECT"
     I_log("debug","Command to block: " .. cmd)    
     os.execute(cmd)    
     I_log("info","Blocked " .. ip .. " from ProFTPd")
