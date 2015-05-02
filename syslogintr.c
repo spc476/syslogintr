@@ -271,32 +271,32 @@ struct msg
 
 /******************************************************************/
 
-Status		 ipv4_socket		(const char *);
-Status		 ipv6_socket		(const char *);
-Status		 local_socket		(const char *);
-Status		 create_socket		(SocketNode,socklen_t);
-void		 event_read		(SocketNode);
-void		 syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
-void		 process_msg		(const struct msg *const);
-Status		 globalv_init		(int,char *[]);
-void		 usage			(const char *);
-Status		 drop_privs		(void);
-Status		 daemon_init		(void);
-void		 load_script		(void);
-int		 map_str_to_int		(const char *,const char *const [],size_t);
-void		 handle_signal		(int);
-Status		 set_signal_handler	(int,void (*)(int));
-int		 syslogintr_alarm	(lua_State *);
-int		 syslogintr_ud__toprint	(lua_State *);
-int		 syslogintr_host	(lua_State *);
-int		 syslogintr_lsock	(lua_State *);
-int		 syslogintr_relay	(lua_State *);
-void		 call_optional_luaf	(const char *);
-void		 internal_log		(int,const char *,...);
-Node		*ListRemHead		(List *const);
-void		 NodeInsert		(Node *const,Node *const);
-void		 NodeRemove		(Node *const);
-void		 add_lua_path		(const char *,const char *);
+static Status		 ipv4_socket		(const char *);
+static Status		 ipv6_socket		(const char *);
+static Status		 local_socket		(const char *);
+static Status		 create_socket		(SocketNode,socklen_t);
+static void		 event_read		(SocketNode);
+static void		 syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
+static void		 process_msg		(const struct msg *const);
+static Status		 globalv_init		(int,char *[]);
+static void		 usage			(const char *);
+static Status		 drop_privs		(void);
+static Status		 daemon_init		(void);
+static void		 load_script		(void);
+static int		 map_str_to_int		(const char *,const char *const [],size_t);
+static void		 handle_signal		(int);
+static Status		 set_signal_handler	(int,void (*)(int));
+static int		 syslogintr_alarm	(lua_State *);
+static int		 syslogintr_ud__toprint	(lua_State *);
+static int		 syslogintr_host	(lua_State *);
+static int		 syslogintr_lsock	(lua_State *);
+static int		 syslogintr_relay	(lua_State *);
+static void		 call_optional_luaf	(const char *);
+static void		 internal_log		(int,const char *,...);
+static Node		*ListRemHead		(List *const);
+static void		 NodeInsert		(Node *const,Node *const);
+static void		 NodeRemove		(Node *const);
+static void		 add_lua_path		(const char *,const char *);
 
 /******************************************************************/
 
@@ -352,22 +352,22 @@ extern int   optind;
 extern int   opterr;
 extern int   optopt;
 
-unsigned int         g_alarm;
-const char          *g_luacode     = LUA_CODE;
-const char          *g_user;
-const char          *g_group;
-const char          *g_lpath;
-const char          *g_lcpath;
-bool                 gf_foreground;
-lua_State           *g_L;
-struct socket_node   g_sockets[MAX_SOCKETS];
-size_t               g_maxsocket;
-size_t               g_ipv4;
-size_t               g_ipv6;
-struct sysstring     g_logtag;
-List                 g_intlog;
+static unsigned int         g_alarm;
+static const char          *g_luacode     = LUA_CODE;
+static const char          *g_user;
+static const char          *g_group;
+static const char          *g_lpath;
+static const char          *g_lcpath;
+static bool                 gf_foreground;
+static lua_State           *g_L;
+static struct socket_node   g_sockets[MAX_SOCKETS];
+static size_t               g_maxsocket;
+static size_t               g_ipv4;
+static size_t               g_ipv6;
+static struct sysstring     g_logtag;
+static List                 g_intlog;
 
-const struct option c_options [] =
+static const struct option c_options [] =
 {
   { "foreground"	, no_argument		, NULL	, OPT_FG        } ,
   { "version"		, no_argument		, NULL	, OPT_VERSION	} ,
@@ -391,7 +391,7 @@ const struct option c_options [] =
   { NULL		, 0			, NULL	, 0             }
 };
 
-const char *const c_facility[] = 
+static const char *const c_facility[] = 
 {
   "kernel",
   "user",
@@ -419,7 +419,7 @@ const char *const c_facility[] =
   "local7"
 };
 
-const char *const c_level[] = 
+static const char *const c_level[] = 
 {
   "emerg",
   "alert",
@@ -431,13 +431,13 @@ const char *const c_level[] =
   "debug"
 };
 
-const struct sysstring c_null = { 0 , "" } ;
-const struct status    c_okay = { true , 0 , "" } ;
+static const struct sysstring c_null = { 0 , "" } ;
+static const struct status    c_okay = { true , 0 , "" } ;
 
-volatile sig_atomic_t mf_sigint;
-volatile sig_atomic_t mf_sigusr1;
-volatile sig_atomic_t mf_sighup;
-volatile sig_atomic_t mf_sigalarm;
+static volatile sig_atomic_t mf_sigint;
+static volatile sig_atomic_t mf_sigusr1;
+static volatile sig_atomic_t mf_sighup;
+static volatile sig_atomic_t mf_sigalarm;
 
 /***************************************************************/
 
@@ -617,7 +617,7 @@ int main(int argc,char *argv[])
 
 /*************************************************************/
 
-Status ipv4_socket(const char *taddr)
+static Status ipv4_socket(const char *taddr)
 {
   assert(taddr != NULL);
   
@@ -633,7 +633,7 @@ Status ipv4_socket(const char *taddr)
 
 /*************************************************************/
 
-Status ipv6_socket(const char *taddr)
+static Status ipv6_socket(const char *taddr)
 {
   assert(taddr != NULL);
   
@@ -649,7 +649,7 @@ Status ipv6_socket(const char *taddr)
 
 /**************************************************************/
 
-Status local_socket(const char *name)
+static Status local_socket(const char *name)
 {
   Status status;
   mode_t oldmask;
@@ -679,7 +679,7 @@ Status local_socket(const char *name)
 
 /*******************************************************************/
 
-Status create_socket(SocketNode listen,socklen_t saddr)
+static Status create_socket(SocketNode listen,socklen_t saddr)
 {
   int reuse = 1;
   int flag;
@@ -763,7 +763,7 @@ Status create_socket(SocketNode listen,socklen_t saddr)
  
 /*****************************************************************/  
 
-void event_read(SocketNode sock)
+static void event_read(SocketNode sock)
 {
   sockaddr_all remote;           
   socklen_t    remsize;
@@ -797,7 +797,7 @@ void event_read(SocketNode sock)
 
 /*********************************************************************/
 
-void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const char *end)
+static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const char *end)
 {
   struct msg msg;
   char       host[FILENAME_MAX];
@@ -1047,7 +1047,7 @@ void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffer,const
 
 /**********************************************************************/
 
-void process_msg(const struct msg *const pmsg)
+static void process_msg(const struct msg *const pmsg)
 {
   const char *err;
   int         rc;
@@ -1122,7 +1122,7 @@ void process_msg(const struct msg *const pmsg)
 
 /**********************************************************************/
 
-Status globalv_init(int argc,char *argv[])
+static Status globalv_init(int argc,char *argv[])
 {
   static char luascript[FILENAME_MAX];
   Status      status;
@@ -1228,7 +1228,7 @@ Status globalv_init(int argc,char *argv[])
 
 /*****************************************************************/
 
-void usage(const char *progname)
+static void usage(const char *progname)
 {
   assert(progname != NULL);
   
@@ -1264,7 +1264,7 @@ void usage(const char *progname)
 
 /*******************************************************************/
 
-Status drop_privs(void)
+static Status drop_privs(void)
 {
   if (g_user == NULL)	/* if no user specified, we won't drop */
     return c_okay;
@@ -1336,7 +1336,7 @@ Status drop_privs(void)
 
 /*************************************************************************/
 
-void load_script(void)
+static void load_script(void)
 {
   int rc;
   
@@ -1363,7 +1363,7 @@ void load_script(void)
 
 /*************************************************************************/
 
-Status daemon_init(void)
+static Status daemon_init(void)
 {
   pid_t pid;
   int   fh;
@@ -1468,7 +1468,7 @@ Status daemon_init(void)
   
 /***********************************************************************/
 
-int map_str_to_int(const char *name,const char *const list[],size_t size)
+static int map_str_to_int(const char *name,const char *const list[],size_t size)
 {
   assert(name != NULL);
   assert(list != NULL);
@@ -1484,7 +1484,7 @@ int map_str_to_int(const char *name,const char *const list[],size_t size)
 
 /***********************************************************************/
 
-void handle_signal(int sig)
+static void handle_signal(int sig)
 {
   switch(sig)
   {
@@ -1499,7 +1499,7 @@ void handle_signal(int sig)
 
 /**********************************************************************/
 
-Status set_signal_handler(int sig,void (*handler)(int))
+static Status set_signal_handler(int sig,void (*handler)(int))
 {
   struct sigaction act;
   struct sigaction oact;
@@ -1515,7 +1515,7 @@ Status set_signal_handler(int sig,void (*handler)(int))
 
 /**************************************************************************/
 
-int syslogintr_alarm(lua_State *L)
+static int syslogintr_alarm(lua_State *L)
 {
   struct itimerval set;
   int              pcount;
@@ -1563,7 +1563,7 @@ int syslogintr_alarm(lua_State *L)
 
 /***********************************************************************/
 
-int syslogintr_ud__toprint(lua_State *L)
+static int syslogintr_ud__toprint(lua_State *L)
 {
   SocketNode  paddr;
   char        taddr[INET6_ADDRSTRLEN];
@@ -1601,7 +1601,7 @@ int syslogintr_ud__toprint(lua_State *L)
 
 /*********************************************************************/
 
-int syslogintr_host(lua_State *L)
+static int syslogintr_host(lua_State *L)
 {
   const char      *hostname;
   struct addrinfo  hints;
@@ -1655,7 +1655,7 @@ int syslogintr_host(lua_State *L)
 
 /************************************************************************/
 
-int syslogintr_lsock(lua_State *L)
+static int syslogintr_lsock(lua_State *L)
 {
   SocketNode paddr;
   const char *unixsocket;
@@ -1695,7 +1695,7 @@ int syslogintr_lsock(lua_State *L)
 
 /************************************************************************/
 
-int syslogintr_relay(lua_State *L)
+static int syslogintr_relay(lua_State *L)
 {
   SocketNode  paddr;
   struct msg  msg;
@@ -1785,7 +1785,7 @@ int syslogintr_relay(lua_State *L)
 
 /************************************************************************/
 
-void call_optional_luaf(const char *fname)
+static void call_optional_luaf(const char *fname)
 {
   lua_getglobal(g_L,fname);
   if (lua_isfunction(g_L,-1))
@@ -1807,7 +1807,7 @@ void call_optional_luaf(const char *fname)
 
 /**********************************************************************/
 
-void internal_log(int priority,const char *format, ... )
+static void internal_log(int priority,const char *format, ... )
 {
   va_list     args;
   char       *buffer;
@@ -1858,7 +1858,7 @@ void internal_log(int priority,const char *format, ... )
 
 /*************************************************************************/
 
-Node *ListRemHead(List *const pl)
+static Node *ListRemHead(List *const pl)
 {
   Node *pn;
   
@@ -1873,7 +1873,7 @@ Node *ListRemHead(List *const pl)
 
 /*************************************************************************/
 
-void NodeInsert(Node *const pn,Node *const pntoa)
+static void NodeInsert(Node *const pn,Node *const pntoa)
 {
   Node *pnn;
   
@@ -1889,7 +1889,7 @@ void NodeInsert(Node *const pn,Node *const pntoa)
 
 /************************************************************************/
 
-void NodeRemove(Node *const pn)
+static void NodeRemove(Node *const pn)
 {
   Node *pns;
   Node *pnp;
@@ -1907,7 +1907,7 @@ void NodeRemove(Node *const pn)
 
 /************************************************************************/
 
-void add_lua_path(const char *name,const char *path)
+static void add_lua_path(const char *name,const char *path)
 {
   const char *currentpath;
   
