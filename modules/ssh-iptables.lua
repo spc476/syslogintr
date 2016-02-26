@@ -69,7 +69,15 @@ function sshd_remove()
   local now = os.time()
   
   while #ssh_blocked > 0 do
-    if now - ssh_blocked[1].when < 3600 then return end
+    -- --------------------------------------------------------------------
+    -- block for a month (30d 10h 30m) as apparently botnets give up after
+    -- being blocked for two weeks.
+    -- --------------------------------------------------------------------
+    
+    if now - ssh_blocked[1].when < 2629800 then 
+      return 
+    end
+    
     local ip = ssh_blocked[1].ip
     I_log("info","Removing IP block: " .. ip)
     ssh_blocked[ip] = nil
