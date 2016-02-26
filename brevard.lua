@@ -36,6 +36,7 @@ require "check_apache"
 require "check_bind"
 require "postfix-mailsummary"
 require "proftp-iptables"
+require "ssh-iptables"
 
 -- **********************************************************************
 
@@ -112,7 +113,7 @@ function log(msg)
     log_to_file(logfiles[msg.facility],msg)
   end
 
-  proftp(msg)
+  sshd(msg)
 
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
