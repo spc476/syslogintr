@@ -49,7 +49,7 @@ colors =
 }
 
 function log(msg)
-  local bar = string.format("\27[1;39m|%s",colors[msg.level])
+  local bar = string.format("\27[1;39m\27(0x\27(B%s",colors[msg.level])
 
   io.stdout:write(colortty(string.format(
 	"%s%15.15s %-15.15s %-6s %6s %s %s\n",
