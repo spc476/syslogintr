@@ -97,7 +97,7 @@ static int colortty(lua_State *L)
     if (*txt == '\n')
       cnt = 0;
     
-    if (cnt == m_width)
+    if (cnt == (unsigned)m_width)
     {
       txt++;
       continue;
@@ -109,9 +109,12 @@ static int colortty(lua_State *L)
       if (*txt == '[')
       {
         buffer[len++] = *txt++;
-        while(!isalpha(*txt))
+        while(*txt < '@')
           buffer[len++] = *txt++;
       }
+      else if (*txt == '(')
+        buffer[len++] = *txt++;
+      
       buffer[len++] = *txt++;
       continue;
     }
@@ -119,7 +122,7 @@ static int colortty(lua_State *L)
     if ((unsigned char)*txt == 0x9B)
     {
       buffer[len++] = *txt++;
-      while(!isalpha(*txt))
+      while(*txt < '@')
         buffer[len++] = *txt++;
       buffer[len++] = *txt++;
       continue;
