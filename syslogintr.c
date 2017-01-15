@@ -569,6 +569,7 @@ int main(int argc,char *argv[])
           msg = (struct msg *)ListRemHead(&g_intlog)
         )
     {
+      assert(msg != (struct msg *)g_intlog.lh_Head);
       process_msg(msg);
       assert(msg->raw.text == msg->msg.text);
       free((void *)msg->raw.text);
