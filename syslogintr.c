@@ -171,6 +171,9 @@
 #  ifndef AI_NUMERICSERV
 #    define AI_NUMERICSERV	0
 #  endif
+#  ifndef IPV6_ADD_MEMBERSHIP'
+#    define IPV6_ADD_MEMBERSHIP 1
+#  endif
 #  ifndef _SC_GETPW_R_SIZE_MAX
 #    define sysconf(x)	BUFSIZ
 #  endif
