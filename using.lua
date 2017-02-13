@@ -65,6 +65,18 @@ end
 function log(msg)
 
   -- ====================================================
+  -- My mac is including the hostname in the program portion
+  -- (or at least, that's how I'm parsing it).  Strip out the
+  -- hostname from anything sent by the Mac
+  -- ====================================================
+  
+  if msg.host == '192.168.1.13' then
+    if msg.program:match('^marvin.') then
+      msg.program = msg.program:match('^marvin.(.*)')
+    end
+  end
+  
+  -- ====================================================
   -- Bunny's machine is sending the hostname, which is
   -- being interpreted as a program name.  This corrects
   -- for that.
