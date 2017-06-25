@@ -29,6 +29,7 @@
 #define _BSD_SOURCE
 
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 #include <lua.h>

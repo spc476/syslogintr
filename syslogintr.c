@@ -171,7 +171,7 @@
 #  ifndef AI_NUMERICSERV
 #    define AI_NUMERICSERV	0
 #  endif
-#  ifndef IPV6_ADD_MEMBERSHIP'
+#  ifndef IPV6_ADD_MEMBERSHIP
 #    define IPV6_ADD_MEMBERSHIP 1
 #  endif
 #  ifndef _SC_GETPW_R_SIZE_MAX
@@ -1570,7 +1570,7 @@ static int syslogintr_alarm(lua_State *L)
 static int syslogintr_ud__toprint(lua_State *L)
 {
   SocketNode  paddr;
-  char        taddr[INET6_ADDRSTRLEN];
+  char        taddr[FILENAME_MAX];
   const char *r;
   
   assert(L != NULL);
