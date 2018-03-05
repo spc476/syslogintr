@@ -47,7 +47,7 @@ function sshd(msg)
   if msg.facility ~= "auth2" then return end
   if msg.level    ~= "info"  then return end
 
-  local ip = string.match(msg.msg,"^Failed password for .* from ::ffff:([%d%.]+).*")
+  local ip = string.match(msg.msg,"^Failed password for .* from ([%d%.]+) .*")
   if ip == nil then return end
 
   I_log("debug","Found IP:" .. ip)
