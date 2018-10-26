@@ -22,16 +22,16 @@
 /********************************************************************
 *
 * colortty    - provide a way to cut strings with the width of the current
-* 		window, taking into account any escape sequences (like 
-*		changing the color of the text), from lua.  It is written
-*		with the assumption that only one line of text is to be
-*		written, and long lines may have any trailing '\n' chopped
-*		off, so plan accordingly.
+*               window, taking into account any escape sequences (like
+*               changing the color of the text), from lua.  It is written
+*               with the assumption that only one line of text is to be
+*               written, and long lines may have any trailing '\n' chopped
+*               off, so plan accordingly.
 *
-*		It is called as followed:
+*               It is called as followed:
 *
-*			require "colortty"
-*			print(colortty("a really long line of text"))
+*                       require "colortty"
+*                       print(colortty("a really long line of text"))
 *
 **********************************************************************/
 
@@ -73,7 +73,7 @@ static int colortty(lua_State *L)
   size_t      len;
   size_t      cnt;
   size_t      size;
-
+  
   if (mf_sigwinch && mf_tty)
   {
     struct winsize size;
@@ -85,7 +85,7 @@ static int colortty(lua_State *L)
     }
     mf_sigwinch = 0;
   }
-
+  
   txt = luaL_checklstring(L,1,&size);
   len = 0;
   cnt = 0;
@@ -96,7 +96,7 @@ static int colortty(lua_State *L)
   {
     if (*txt == '\n')
       cnt = 0;
-    
+      
     if (cnt == (unsigned)m_width)
     {
       txt++;
@@ -114,11 +114,11 @@ static int colortty(lua_State *L)
       }
       else if (*txt == '(')
         buffer[len++] = *txt++;
-      
+        
       buffer[len++] = *txt++;
       continue;
     }
-        
+    
     if ((unsigned char)*txt == 0x9B)
     {
       buffer[len++] = *txt++;

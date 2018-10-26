@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -26,24 +26,24 @@ function log(msg)
   else
     io.stdout:write(string.format("From: %15s\n",msg.host))
   end
-
+  
   io.stdout:write(string.format([[
-	Facility: %s
-	Level:    %s
-	Time:     %s
-	Log-time: %s
-	Program:  %s
-	PID:      %s
-	Msg:      %s
-	
+        Facility: %s
+        Level:    %s
+        Time:     %s
+        Log-time: %s
+        Program:  %s
+        PID:      %s
+        Msg:      %s
+        
 ]],
-	msg.facility,
-	msg.level,
-	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestatmp),
-	msg.program,
-	msg.pid,
-	msg.msg
+        msg.facility,
+        msg.level,
+        os.date("%c",msg.timestamp),
+        os.date("%c",msg.logtimestatmp),
+        msg.program,
+        msg.pid,
+        msg.msg
   ))
-
+  
 end

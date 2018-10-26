@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -22,19 +22,19 @@
 -- Pull stats from a locally running Apache instance.  The stats are pulled
 -- from Apache's mod_status (so to use this script, you'll need to set that
 -- module up in Apache).  If it can't grab the stats from Apache, a notification
--- email is sent.  
--- 
+-- email is sent.
+--
 -- params is a table with the following fields (all optional):
 --
---	params.user		-- username for web authentication
---	params.password		-- password
---	params.from		-- email From: address
---	params.to		-- email To: address (can be an array)
---	params.subject		-- email Subject: line
---	params.body		-- text of the email message
+--      params.user             -- username for web authentication
+--      params.password         -- password
+--      params.from             -- email From: address
+--      params.to               -- email To: address (can be an array)
+--      params.subject          -- email Subject: line
+--      params.body             -- text of the email message
 --
 -- This module requires the use of "wget".
--- 
+--
 -- *********************************************************************
 
 require "I_log"
@@ -48,7 +48,7 @@ require "sendmail"
 function check_webserver(params)
   local res   = {}
   local cmd   = "wget"
-
+  
   if params.user then
     cmd = cmd .. " --user " .. params.user
     if params.password then
@@ -56,40 +56,40 @@ function check_webserver(params)
     end
   end
   cmd = cmd .. " -O - " .. params.url .. " 2>/dev/null"
-
+  
   local stats = io.popen(cmd,"r")
-
+  
   for line in stats:lines() do
     local name,value = string.match(line,"^([^:]+): (.+)$")
     res[name] = value
   end
-
+  
   stats:close()
-
+  
   setmetatable(res,{ __index = function(t,k) return 0 end } )
   local msg = string.format("%s %s %s %s %s %s %s %s %s",
                 res['Total Accesses'],
                 res['Total kBytes'],
                 res['CPULoad'],
                 delta_time(res['Uptime']),
-                res['ReqPerSec'],  
+                res['ReqPerSec'],
                 res['BytesPerSec'],
                 res['BytesPerReq'],
-                res['BusyWokers'], 
+                res['BusyWokers'],
                 res['IdleWorkers'])
-
+                
   if msg == "0 0 0 0s 0 0 0 0 0" then
     I_log("crit","WEB SERVER NOT RUNNING")
     send_email{
-	from    = params.from    or "root",
-	to      = params.to      or "root",
-	subject = params.subject or "WEB SERVER NOT RUNNING",
-	body    = params.body    or "WEB SERVER NOT RUNNING"
-	}
+        from    = params.from    or "root",
+        to      = params.to      or "root",
+        subject = params.subject or "WEB SERVER NOT RUNNING",
+        body    = params.body    or "WEB SERVER NOT RUNNING"
+        }
     I_log("debug","past sending email")
     I_log("notice","Restarting the webserver")
     os.execute("/etc/init.d/httpd start")
-  else  
+  else
     I_prlog("check/httpd","notice",msg)
   end
 end

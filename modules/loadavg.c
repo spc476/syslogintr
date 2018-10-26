@@ -21,8 +21,8 @@
 
 /*******************************************************************
 *
-* loadavg	- retrieve the system load for a Unix system
-*		  It returns three values
+* loadavg       - retrieve the system load for a Unix system
+*                 It returns three values
 *
 *******************************************************************/
 
@@ -44,7 +44,7 @@ static int la_loadavg(lua_State *L)
   
   if (getloadavg(load,3) == -1)
     return luaL_error(L,"getloadavg() = %s",strerror(errno));
-  
+    
   lua_pushnumber(L,load[0]);
   lua_pushnumber(L,load[1]);
   lua_pushnumber(L,load[2]);

@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -29,38 +29,38 @@
 function log(msg)
   io.stdout:write(string.format("Request:\n"))
   io.stdout:write(string.format([[
-	version       = %d
-	_RAW          = %s
-	host          = %s
-	relay         = %s
-	port          = %d
-	localaddr     = %s
-	localport     = %d
-	remote        = %s
-	timestamp     = %s
-	logtimestamp  = %s
-	program       = %s
-	pid           = %d
-	facility      = %s
-	level         = %s
-	msg           = %s
-
+        version       = %d
+        _RAW          = %s
+        host          = %s
+        relay         = %s
+        port          = %d
+        localaddr     = %s
+        localport     = %d
+        remote        = %s
+        timestamp     = %s
+        logtimestamp  = %s
+        program       = %s
+        pid           = %d
+        facility      = %s
+        level         = %s
+        msg           = %s
+        
 ]],
-	msg.version,
-	msg._RAW,
-	msg.host,
-	msg.relay,
-	msg.port,
-	msg.localaddr,
-	msg.localport,
-	tostring(msg.remote),
-	os.date("%c",msg.timestamp),
-	os.date("%c",msg.logtimestamp),
-	msg.program,
-	msg.pid,
-	msg.facility,
-	msg.level,
-	msg.msg))
-	
+        msg.version,
+        msg._RAW,
+        msg.host,
+        msg.relay,
+        msg.port,
+        msg.localaddr,
+        msg.localport,
+        tostring(msg.remote),
+        os.date("%c",msg.timestamp),
+        os.date("%c",msg.logtimestamp),
+        msg.program,
+        msg.pid,
+        msg.facility,
+        msg.level,
+        msg.msg))
+        
   io.stdout:flush()
 end

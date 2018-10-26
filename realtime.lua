@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -25,10 +25,10 @@
 -- then be used to listen on that multicast address and print the logs as
 -- they are received.
 --
--- One syslogintr on the network does a relay(239.255.0.1,msg) 
+-- One syslogintr on the network does a relay(239.255.0.1,msg)
 -- I run another syslogintr on the network:
 --
--- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua 
+-- syslogintr --ipaddr 239.255.0.1 --foreground realtime.lua
 --
 -- Makes for a pretty display.
 --
@@ -50,16 +50,16 @@ colors =
 
 function log(msg)
   local bar = string.format("\27[1;39m\27(0x\27(B%s",colors[msg.level])
-
+  
   io.stdout:write(colortty(string.format(
-	"%s%15.15s %-15.15s %-6s %6s %s %s\n",
-	colors[msg.level],
-	msg.host,
-	msg.program,
-	msg.facility,
-	msg.level,
-	bar, -- os.date("%b %d %H:%M:%S",msg.timestamp),
-	msg.msg
-	)))
+        "%s%15.15s %-15.15s %-6s %6s %s %s\n",
+        colors[msg.level],
+        msg.host,
+        msg.program,
+        msg.facility,
+        msg.level,
+        bar, -- os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.msg
+        )))
   io.stdout:flush()
 end

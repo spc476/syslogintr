@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2009 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -36,10 +36,10 @@ require "log_beancounter"
 
 function alarm_handler()
   check_webserver{
-	url     = "http://localhost/server-status\?auto",
+        url     = "http://localhost/server-status\?auto",
         from    = "root@northlauderdale.pickint.net",
-	to      = { "spc@conman.org" , "spc@pickint.net" },
-	subject = "NORTHLAUDERDALE WEBSEVER DOWN!"
+        to      = { "spc@conman.org" , "spc@pickint.net" },
+        subject = "NORTHLAUDERDALE WEBSEVER DOWN!"
   }
   log_bean()
 end
@@ -47,12 +47,12 @@ end
 -- ******************************************************************
 -- * A file the duplicates a default install of RedHat and their
 -- * syslog.conf file.  All functions not labeled as "local" are called
--- * directly via the runtime engine.  
+-- * directly via the runtime engine.
 -- *
--- * cleanup()		- called when the daemon exits
--- * reload_signal()	- called when the program recieves a SIGHUP
--- * log()		- called each time the daemon receives a message
--- * 
+-- * cleanup()          - called when the daemon exits
+-- * reload_signal()    - called when the program recieves a SIGHUP
+-- * log()              - called each time the daemon receives a message
+-- *
 -- * This is provided as a means to replace syslogd with a drop in
 -- * replacement, but with the ability to expand upon the functionality
 -- * as required.
@@ -103,18 +103,18 @@ local function logfile(msg,file,flushp)
   end
   
   file:write(string.format(
-  	"%s %s %s[%d]: %s\n",
-  	os.date("%b %d %H:%M:%S",msg.timestamp),
-  	msg.host,
-  	msg.program,
-  	msg.pid,
-  	msg.msg
+        "%s %s %s[%d]: %s\n",
+        os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.host,
+        msg.program,
+        msg.pid,
+        msg.msg
   ))
   
   if flushp then file:flush() end
 end
-  
--- ******************************************************************  
+
+-- ******************************************************************
 
 local function everybody(msg)
   local out = io.popen("/usr/bin/wall","w")
@@ -129,23 +129,23 @@ function log(msg)
   -- impending doom
   -- log it to the black box
   -- ==========================
-
+  
   if msg.facility == 'local6'
   and msg.level    == 'err'
   and msg.msg:match("(fork)") then
     log_bean()
   end
-
+  
   if msg.facility == 'cron1' and
      msg.level    == 'info' and
-     msg.msg:match("(fork)") then 
- 	log_bean() 
+     msg.msg:match("(fork)") then
+        log_bean()
   end
-
+  
   -- ===================================================
   -- now on to your regularly scheduled logging regemine
   -- ===================================================
-
+  
   if msg.level == 'info'   or
      msg.level == 'notice' or
      msg.level == 'warn'   or
@@ -160,7 +160,7 @@ function log(msg)
             logfile(msg,messages)
           end
      end
-
+     
   if msg.facility == 'auth2' then
     logfile(msg,secure)
   end
@@ -185,19 +185,19 @@ function log(msg)
             logfile(msg,spooler)
           end
       end
-
+      
   if msg.facility == 'local7' then
     logfile(msg,boot)
   end
-
+  
   if msg.facility == 'local4' then
     logfile(msg,local4)
   end
-
+  
   if msg.facility == 'local6' then
     logfile(msg,webserver,true)
   end
-
+  
   relay(homebase,msg)
 end
 

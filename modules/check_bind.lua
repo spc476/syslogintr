@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -27,10 +27,10 @@
 --
 -- params is a table with the following optional fields:
 --
---	params.from		-- From: address
---	params.to		-- To: address (can be an array of addresses)
---	params.subject		-- Subject: line
---	params.body		-- body of the email
+--      params.from             -- From: address
+--      params.to               -- To: address (can be an array of addresses)
+--      params.subject          -- Subject: line
+--      params.body             -- body of the email
 --
 -- **********************************************************************
 
@@ -46,33 +46,33 @@ function check_nameserver(params)
   if pidfile == nil then
     I_log("crit","NAME SERVER NOT RUNNING (crash?)")
     send_email{
-    	from    = params.from    or "root@conman.org",
-    	to      = params.to      or "spc@conman.org",
-    	subject = params.subject or "NAME SERVER NOT RUNNING (crash?)",
-    	body    = params.body    or "NAME SERVER NOT RUNNING"
+        from    = params.from    or "root@conman.org",
+        to      = params.to      or "spc@conman.org",
+        subject = params.subject or "NAME SERVER NOT RUNNING (crash?)",
+        body    = params.body    or "NAME SERVER NOT RUNNING"
     }
     I_log("notice","Restarting named")
     os.execute("/etc/init.d/named start")
     return
   end
-
-  local pid = pidfile:read("*n")   
+  
+  local pid = pidfile:read("*n")
   pidfile:close()
-
+  
   local exefile = io.open("/proc/" .. pid)
   if exefile == nil then
     I_log("crit","NAME SERVER NOT RUNNING")
     send_email{
-    	from    = params.from    or "root@conman.org",
-    	to      = params.to      or "spc@conman.org",
-    	subject = params.subject or "NAME SERVER NOT RUNNING",
-    	body    = params.body    or "NAME SERVER NOT RUNNING"
+        from    = params.from    or "root@conman.org",
+        to      = params.to      or "spc@conman.org",
+        subject = params.subject or "NAME SERVER NOT RUNNING",
+        body    = params.body    or "NAME SERVER NOT RUNNING"
     }
     I_log("notice","Restarting named")
     os.execute("/etc/init.d/named start")
     return
-  end   
-
+  end
+  
   exefile:close()
   I_log("debug","name server still running")
 end

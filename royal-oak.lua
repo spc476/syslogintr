@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -81,30 +81,30 @@ function log(msg)
   if msg.host == '216.242.158.235' then
     return
   end
-
+  
   if msg.facility == 'local0' and string.match(msg.msg,'UDP%: %[216%.82%.117%.164%]') then
     return
   end
-
+  
   if msg.remote == false then
     msg.host = "royal-oak"
   end
-
+  
   if msg.facility == 'local1' then
-    check_ospf(msg,{ 
-	from = "root@royal-oak.pickint.net",
-	to = { "spc@pickint.net" , "admin@pickint.net"}
+    check_ospf(msg,{
+        from = "root@royal-oak.pickint.net",
+        to = { "spc@pickint.net" , "admin@pickint.net"}
     })
   end
-
+  
   if logfiles[msg.facility] == nil then
     log_to_file(logfiles.user,msg)
   else
     log_to_file(logfiles[msg.facility],msg)
   end
-
+  
   sshd(msg)
-
+  
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
   end
@@ -117,7 +117,7 @@ function reload_signal()
     cleanup()
     open_files()
   end
-
+  
   I_log("debug","signal received loud and clear; reset logfiles")
 end
 
@@ -125,11 +125,11 @@ end
 
 function log_to_file(file,msg)
   file:write(string.format(
-	"%s %s %s: %s\n",
-	os.date("%b %d %H:%M:%S",msg.timestamp),
-	msg.host,
-	msg.program,
-	msg.msg
+        "%s %s %s: %s\n",
+        os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.host,
+        msg.program,
+        msg.msg
   ));
   file:flush()
 end

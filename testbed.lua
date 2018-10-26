@@ -2,7 +2,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -25,7 +25,7 @@
 -- (192 tests total). You do not need to be running the main executable
 -- to run this test.
 --
--- *********************************************************************** 
+-- ***********************************************************************
 
 if #arg == 0 then
   scriptpath = "/usr/local/sbin/syslog.lua"
@@ -41,23 +41,23 @@ function relay(where,msg) end
 
 dofile(scriptpath)
 
-g_hosts = 
+g_hosts =
 {
-  { host = "/dev/log"	, remote = false , port =  -1 } ,
+  { host = "/dev/log"   , remote = false , port =  -1 } ,
 --[[
-  { host = "127.0.0.1"	, remote = true  , port = 514 } ,
-  { host = ::1"		, remote = true  , port = 514 } ,
+  { host = "127.0.0.1"  , remote = true  , port = 514 } ,
+  { host = ::1"         , remote = true  , port = 514 } ,
 --]]
 }
 
 -- ***********************************************************************
 
 function test_levels(msg)
-  local levels = { 
-  			"emerg" , "alert"  , "crit"  , "err" ,  
-  			"warn"  , "notice" , "info"  , "debug" 
-  		 }
-
+  local levels = {
+                        "emerg" , "alert"  , "crit"  , "err" ,
+                        "warn"  , "notice" , "info"  , "debug"
+                 }
+                 
   local err,result
   
   for i = 1 , #levels do
@@ -74,15 +74,15 @@ end
 
 function test_facilities(msg)
   local facilities = {
-  			"kernel" , "user"   , "mail"   , "daemon" ,
-  			"auth1"  , "syslog" , "lpr"    , "news" , 
-  			"uucp"   , "cron1"  , "auth2"  , "ftp" ,
-  			"ntp"    , "auth3"  , "auth4"  , "cron2" ,
-  			"local0" , "local1" , "local2" , "local3" ,
-  			"local4" , "local5" , "local6" , "local7" }
-  		     
-  		      
-
+                        "kernel" , "user"   , "mail"   , "daemon" ,
+                        "auth1"  , "syslog" , "lpr"    , "news" ,
+                        "uucp"   , "cron1"  , "auth2"  , "ftp" ,
+                        "ntp"    , "auth3"  , "auth4"  , "cron2" ,
+                        "local0" , "local1" , "local2" , "local3" ,
+                        "local4" , "local5" , "local6" , "local7" }
+                        
+                        
+                        
   for i = 1 , #facilities do
     msg.facility = facilities[i]
     test_levels(msg)
@@ -107,7 +107,7 @@ function test_script()
   local msg = {}
   
   msg.version      = 0
-  msg._RAW         = ""	-- not supported yet
+  msg._RAW         = "" -- not supported yet
   msg.timestamp    = os.time()
   msg.logtimestamp = os.time()
   msg.program      = "scripttester"

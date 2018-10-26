@@ -27,20 +27,20 @@
 * then passes them on to a Lua function for handling.  The C code will
 * construct a Lua table with the following fields:
 *
-*	version		integer = 0
-*	facility	string
-*	level		string
-*	timestamp	as from os.time()
-*	logtimestamp	as from os.time() [1]
-*	pid		integer (0 if not available)  [2]
-*	program		string  ("" if not available) [3]
-*	msg		actual string
-*	remote		boolean
-*	host		string [4]
-*	relay		string  ("" if not available) [6]
-*	port		integer (-1 if not available) [5]
-*	localaddr	string [4][7]
-*	localport	integer (-1 if not available) [7]
+*       version         integer = 0
+*       facility        string
+*       level           string
+*       timestamp       as from os.time()
+*       logtimestamp    as from os.time() [1]
+*       pid             integer (0 if not available)  [2]
+*       program         string  ("" if not available) [3]
+*       msg             actual string
+*       remote          boolean
+*       host            string [4]
+*       relay           string  ("" if not available) [6]
+*       port            integer (-1 if not available) [5]
+*       localaddr       string [4][7]
+*       localport       integer (-1 if not available) [7]
 *
 * and then pass it to a Lua function called log().  That function can then
 * do whatever it wants with the information.
@@ -63,43 +63,43 @@
 *
 * There are also two Lua variables defined:
 *
-*	scriptpath	- the full path to the script being run
-*	script		- the basename of the script being run
+*       scriptpath      - the full path to the script being run
+*       script          - the basename of the script being run
 *
 * To compile (assuming the Lua header files and library are installed):
 *
-*	Linux:
-* 	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -ldl -lm -llua
+*       Linux:
+*       gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -ldl -lm -llua
 *
-*	Mac-OS/X
-*	gcc -std=c99 -g -o syslogintr syslogintr.c -ldl -lm -llua
+*       Mac-OS/X
+*       gcc -std=c99 -g -o syslogintr syslogintr.c -ldl -lm -llua
 *
-*	OpenBSD
-*	gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -lm -llua
+*       OpenBSD
+*       gcc -std=c99 -rdynamic -g -o syslogintr syslogintr.c -lm -llua
 *
-*	Solaris (using native Sun compiler)
-*	cc -xc99 -g -o syslogintr syslogintr.c -llua -ldl -lm -lsocket -lnsl
+*       Solaris (using native Sun compiler)
+*       cc -xc99 -g -o syslogintr syslogintr.c -llua -ldl -lm -lsocket -lnsl
 *
-* [1]	if the incoming syslog request has a timestamp, this will contain
-*	it, otherwise, it's equal to the timestamp field.
+* [1]   if the incoming syslog request has a timestamp, this will contain
+*       it, otherwise, it's equal to the timestamp field.
 *
-* [2]	if the incoming syslog request has a PID field.
+* [2]   if the incoming syslog request has a PID field.
 *
-* [3]	if the incoming syslog request has a program field.
+* [3]   if the incoming syslog request has a program field.
 *
-* [4]	IP address (IPv4 or IPv6) of the request.  If it's from a local
-*	socket this will be the filename of the localsocket.
+* [4]   IP address (IPv4 or IPv6) of the request.  If it's from a local
+*       socket this will be the filename of the localsocket.
 *
-* [5]	Remote port of the request, or 0 if from the localsocket.
+* [5]   Remote port of the request, or 0 if from the localsocket.
 *
-* [6]	The message is being relayed from an original source.  If that
-*	is the case, then host will be set to the original source, and
-*	relay will be set to the device that sent us the message.  If
-*	the device was the original sender, then relay will be "".
+* [6]   The message is being relayed from an original source.  If that
+*       is the case, then host will be set to the original source, and
+*       relay will be set to the device that sent us the message.  If
+*       the device was the original sender, then relay will be "".
 *
-* [7]	The information relates to the local socket.  Useful if you
-*	have a large number of listening sockets and need to filter
-*	on that information.
+* [7]   The information relates to the local socket.  Useful if you
+*       have a large number of listening sockets and need to filter
+*       on that information.
 ************************************************************************/
 
 #define _GNU_SOURCE
@@ -138,44 +138,44 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-#define VERSION		"1.2.3"
+#define VERSION         "1.2.3"
 
-#define MAX_FACILITY	24
-#define MAX_LEVEL	 8
-#define MAX_SOCKETS	18
-#define MAX_MSGLEN	1024
+#define MAX_FACILITY    24
+#define MAX_LEVEL        8
+#define MAX_SOCKETS     18
+#define MAX_MSGLEN      1024
 
-#define LOG_PORT	514
-#define LOG_LOCAL	"/dev/log"
-#define LOG_IPv4	"0.0.0.0"
-#define LOG_IPv6	"::"
+#define LOG_PORT        514
+#define LOG_LOCAL       "/dev/log"
+#define LOG_IPv4        "0.0.0.0"
+#define LOG_IPv6        "::"
 
-#define LUA_CODE	"/usr/local/sbin/syslog.lua"
-#define LUA_UD_HOST	"SOCKADDR"
+#define LUA_CODE        "/usr/local/sbin/syslog.lua"
+#define LUA_UD_HOST     "SOCKADDR"
 
-#define PID_FILE	"/var/run/syslogd.pid"
-#define DEV_NULL	"/dev/null"
+#define PID_FILE        "/var/run/syslogd.pid"
+#define DEV_NULL        "/dev/null"
 
 /************************************************************************
 *
 * And now the ugly, non-portable bits.  This stuff bites and I hate that
 * I have to do this, but alas, if I want this to compile on stuff other
-* than my own system ... 
+* than my own system ...
 *
 ************************************************************************/
 
 #ifdef __APPLE__
 #  include <libgen.h>
 #  undef LOG_LOCAL
-#  define LOG_LOCAL	"/var/run/syslog"
+#  define LOG_LOCAL     "/var/run/syslog"
 #  ifndef AI_NUMERICSERV
-#    define AI_NUMERICSERV	0
+#    define AI_NUMERICSERV      0
 #  endif
 #  ifndef IPV6_ADD_MEMBERSHIP
 #    define IPV6_ADD_MEMBERSHIP 1
 #  endif
 #  ifndef _SC_GETPW_R_SIZE_MAX
-#    define sysconf(x)	BUFSIZ
+#    define sysconf(x)  BUFSIZ
 #  endif
 #endif
 
@@ -186,26 +186,26 @@
 #ifdef __SunOS
 #  include <libgen.h>
 #  include <sys/un.h>
-#  define AF_LOCAL	AF_UNIX
+#  define AF_LOCAL      AF_UNIX
 #endif
 
 /*****************************************************************/
 
 enum
 {
-  OPT_NONE	= '\0',
-  OPT_USER	= 'u',
-  OPT_GROUP	= 'g',
-  OPT_IPv4	= '4',
-  OPT_IPv6	= '6',
+  OPT_NONE      = '\0',
+  OPT_USER      = 'u',
+  OPT_GROUP     = 'g',
+  OPT_IPv4      = '4',
+  OPT_IPv6      = '6',
   OPT_IPv4int   = 'i',
   OPT_IPv6int   = 'I',
-  OPT_LOCAL	= 'l',
-  OPT_SOCKET	= 's',
-  OPT_FG	= 'f',
-  OPT_PATH	= 'p',
-  OPT_CPATH	= 'c',
-  OPT_HELP	= 'h',
+  OPT_LOCAL     = 'l',
+  OPT_SOCKET    = 's',
+  OPT_FG        = 'f',
+  OPT_PATH      = 'p',
+  OPT_CPATH     = 'c',
+  OPT_HELP      = 'h',
   OPT_VERSION   = 'v',
   OPT_ERR       = '?'
 };
@@ -254,52 +254,52 @@ typedef struct list
 
 struct msg
 {
-  Node             node;	  /* used to internally queue log msgs	*/
-  int              version;	  /* syslog version---RFC3164=0		*/
-  struct sysstring raw;		  /* raw message (debugging purposes)	*/
-  struct sysstring host;	  /* address of original sending host	*/
-  struct sysstring relay;	  /* address of host that sent msg	*/
-  int              port;	  /* UDP port of sending host		*/
+  Node             node;          /* used to internally queue log msgs  */
+  int              version;       /* syslog version---RFC3164=0         */
+  struct sysstring raw;           /* raw message (debugging purposes)   */
+  struct sysstring host;          /* address of original sending host   */
+  struct sysstring relay;         /* address of host that sent msg      */
+  int              port;          /* UDP port of sending host           */
   struct sysstring laddr;         /* address of receiving host (us)     */
   int              lport;         /* UDP port of receiving host (us)    */
-  bool             remote;	  /* true if syslog from remote		*/
-  time_t           timestamp;	  /* timestamp of received syslog	*/
-  time_t           logtimestamp;  /* original timestamp 		*/
-  struct sysstring program;	  /* program that generated syslog	*/
-  int              pid;		  /* process id of said program		*/
-  int              facility;	
+  bool             remote;        /* true if syslog from remote         */
+  time_t           timestamp;     /* timestamp of received syslog       */
+  time_t           logtimestamp;  /* original timestamp                 */
+  struct sysstring program;       /* program that generated syslog      */
+  int              pid;           /* process id of said program         */
+  int              facility;
   int              level;
-  struct sysstring msg;		  /* syslog message			*/
+  struct sysstring msg;           /* syslog message                     */
 };
 
 /******************************************************************/
 
-static Status		 ipv4_socket		(const char *);
-static Status		 ipv6_socket		(const char *);
-static Status		 local_socket		(const char *);
-static Status		 create_socket		(SocketNode,socklen_t);
-static void		 event_read		(SocketNode);
-static void		 syslog_interp		(sockaddr_all *,sockaddr_all *,const char *,const char *);
-static void		 process_msg		(const struct msg *const);
-static Status		 globalv_init		(int,char *[]);
-static void		 usage			(const char *);
-static Status		 drop_privs		(void);
-static Status		 daemon_init		(void);
-static void		 load_script		(void);
-static int		 map_str_to_int		(const char *,const char *const [],size_t);
-static void		 handle_signal		(int);
-static Status		 set_signal_handler	(int,void (*)(int));
-static int		 syslogintr_alarm	(lua_State *);
-static int		 syslogintr_ud__toprint	(lua_State *);
-static int		 syslogintr_host	(lua_State *);
-static int		 syslogintr_lsock	(lua_State *);
-static int		 syslogintr_relay	(lua_State *);
-static void		 call_optional_luaf	(const char *);
-static void		 internal_log		(int,const char *,...);
-static Node		*ListRemHead		(List *const);
-static void		 NodeInsert		(Node *const,Node *const);
-static void		 NodeRemove		(Node *const);
-static void		 add_lua_path		(const char *,const char *);
+static Status            ipv4_socket            (const char *);
+static Status            ipv6_socket            (const char *);
+static Status            local_socket           (const char *);
+static Status            create_socket          (SocketNode,socklen_t);
+static void              event_read             (SocketNode);
+static void              syslog_interp          (sockaddr_all *,sockaddr_all *,const char *,const char *);
+static void              process_msg            (const struct msg *const);
+static Status            globalv_init           (int,char *[]);
+static void              usage                  (const char *);
+static Status            drop_privs             (void);
+static Status            daemon_init            (void);
+static void              load_script            (void);
+static int               map_str_to_int         (const char *,const char *const [],size_t);
+static void              handle_signal          (int);
+static Status            set_signal_handler     (int,void (*)(int));
+static int               syslogintr_alarm       (lua_State *);
+static int               syslogintr_ud__toprint (lua_State *);
+static int               syslogintr_host        (lua_State *);
+static int               syslogintr_lsock       (lua_State *);
+static int               syslogintr_relay       (lua_State *);
+static void              call_optional_luaf     (const char *);
+static void              internal_log           (int,const char *,...);
+static Node             *ListRemHead            (List *const);
+static void              NodeInsert             (Node *const,Node *const);
+static void              NodeRemove             (Node *const);
+static void              add_lua_path           (const char *,const char *);
 
 /******************************************************************/
 
@@ -372,29 +372,29 @@ static List                 g_intlog;
 
 static const struct option c_options [] =
 {
-  { "foreground"	, no_argument		, NULL	, OPT_FG        } ,
-  { "version"		, no_argument		, NULL	, OPT_VERSION	} ,
-  { "ip"		, no_argument		, NULL	, OPT_IPv4	} ,
-  { "ip4"		, no_argument		, NULL	, OPT_IPv4	} ,
-  { "ipv4"		, no_argument		, NULL	, OPT_IPv4	} ,
-  { "ipaddr"		, required_argument	, NULL	, OPT_IPv4int	} ,
-  { "ip4addr"		, required_argument 	, NULL	, OPT_IPv4int	} ,
-  { "ipv4addr"		, required_argument 	, NULL	, OPT_IPv4int	} ,
-  { "ip6"		, no_argument		, NULL	, OPT_IPv6	} ,
-  { "ipv6"		, no_argument		, NULL	, OPT_IPv6	} ,
-  { "ip6addr"		, required_argument	, NULL	, OPT_IPv6int	} ,
-  { "ipv6addr"		, required_argument	, NULL	, OPT_IPv6int   } ,
-  { "local"		, no_argument		, NULL	, OPT_LOCAL     } ,
-  { "socket"		, required_argument	, NULL	, OPT_SOCKET	} ,
-  { "user"		, required_argument	, NULL	, OPT_USER      } ,
-  { "group"		, required_argument	, NULL	, OPT_GROUP     } ,
-  { "lua-path"		, required_argument	, NULL	, OPT_PATH	} ,
-  { "lua-cpath"		, required_argument	, NULL	, OPT_CPATH	} ,
-  { "help"		, no_argument		, NULL	, OPT_HELP      } ,
-  { NULL		, 0			, NULL	, 0             }
+  { "foreground"        , no_argument           , NULL  , OPT_FG        } ,
+  { "version"           , no_argument           , NULL  , OPT_VERSION   } ,
+  { "ip"                , no_argument           , NULL  , OPT_IPv4      } ,
+  { "ip4"               , no_argument           , NULL  , OPT_IPv4      } ,
+  { "ipv4"              , no_argument           , NULL  , OPT_IPv4      } ,
+  { "ipaddr"            , required_argument     , NULL  , OPT_IPv4int   } ,
+  { "ip4addr"           , required_argument     , NULL  , OPT_IPv4int   } ,
+  { "ipv4addr"          , required_argument     , NULL  , OPT_IPv4int   } ,
+  { "ip6"               , no_argument           , NULL  , OPT_IPv6      } ,
+  { "ipv6"              , no_argument           , NULL  , OPT_IPv6      } ,
+  { "ip6addr"           , required_argument     , NULL  , OPT_IPv6int   } ,
+  { "ipv6addr"          , required_argument     , NULL  , OPT_IPv6int   } ,
+  { "local"             , no_argument           , NULL  , OPT_LOCAL     } ,
+  { "socket"            , required_argument     , NULL  , OPT_SOCKET    } ,
+  { "user"              , required_argument     , NULL  , OPT_USER      } ,
+  { "group"             , required_argument     , NULL  , OPT_GROUP     } ,
+  { "lua-path"          , required_argument     , NULL  , OPT_PATH      } ,
+  { "lua-cpath"         , required_argument     , NULL  , OPT_CPATH     } ,
+  { "help"              , no_argument           , NULL  , OPT_HELP      } ,
+  { NULL                , 0                     , NULL  , 0             }
 };
 
-static const char *const c_facility[] = 
+static const char *const c_facility[] =
 {
   "kernel",
   "user",
@@ -406,7 +406,7 @@ static const char *const c_facility[] =
   "news",
   "uucp",
   "cron1",
-  "auth2",	/* also authpriv */
+  "auth2",      /* also authpriv */
   "ftp",
   "ntp",
   "auth3",
@@ -422,7 +422,7 @@ static const char *const c_facility[] =
   "local7"
 };
 
-static const char *const c_level[] = 
+static const char *const c_level[] =
 {
   "emerg",
   "alert",
@@ -447,7 +447,7 @@ static volatile sig_atomic_t mf_sigalarm;
 int main(int argc,char *argv[])
 {
   Status  status;
-    
+  
   status = globalv_init(argc,argv);
   if (!status.okay)
   {
@@ -455,7 +455,7 @@ int main(int argc,char *argv[])
       perror(status.msg);
     return EXIT_FAILURE;
   }
-
+  
   if (!gf_foreground)
   {
     FILE *fppid;
@@ -474,14 +474,14 @@ int main(int argc,char *argv[])
       fclose(fppid);
     }
   }
-
+  
   status = drop_privs();
   if (!status.okay)
   {
     perror(status.msg);
     return EXIT_FAILURE;
   }
-
+  
   g_L = lua_open();
   if (g_L == NULL)
   {
@@ -492,17 +492,17 @@ int main(int argc,char *argv[])
   lua_gc(g_L,LUA_GCSTOP,0);
   luaL_openlibs(g_L);
   lua_gc(g_L,LUA_GCRESTART,0);
-
+  
   lua_pushstring(g_L,g_luacode);
   lua_setglobal(g_L,"scriptpath");
   lua_pushstring(g_L,basename(g_luacode)); /* Solaris bitches about this line */
   lua_setglobal(g_L,"script");
-
+  
   lua_register(g_L,"alarm",syslogintr_alarm);
   lua_register(g_L,"host", syslogintr_host);
   lua_register(g_L,"lsock",syslogintr_lsock);
   lua_register(g_L,"relay",syslogintr_relay);
-
+  
   /*--------------------------------------------------
   ; this metatable exists so we can call tostring() on
   ; our "host" userdata.
@@ -515,10 +515,10 @@ int main(int argc,char *argv[])
   
   if (g_lpath)
     add_lua_path("path",g_lpath);
-  
+    
   if (g_lcpath)
     add_lua_path("cpath",g_lcpath);
-
+    
   set_signal_handler(SIGINT, handle_signal);
   set_signal_handler(SIGUSR1,handle_signal);
   set_signal_handler(SIGHUP ,handle_signal);
@@ -535,7 +535,7 @@ int main(int argc,char *argv[])
     events[i].fd     = g_sockets[i].sock;
     events[i].events = POLLIN;
   }
-
+  
   while(!mf_sigint)
   {
     lua_settop(g_L,0);
@@ -545,7 +545,7 @@ int main(int argc,char *argv[])
       mf_sigusr1 = 0;
       load_script();
     }
-
+    
     if (mf_sighup)
     {
       mf_sighup = 0;
@@ -581,16 +581,16 @@ int main(int argc,char *argv[])
     ;-------------------------------------------------------------*/
     
     if (poll(events,g_maxsocket,-1) < 1)
-      continue;	/* continue on errors and timeouts */
-    
+      continue; /* continue on errors and timeouts */
+      
     for (size_t i = 0 ; i < g_maxsocket; i++)
     {
       if ((events[i].revents & POLLIN))
         event_read(&g_sockets[i]);
     }
   }
-
-  call_optional_luaf("cleanup");  
+  
+  call_optional_luaf("cleanup");
   lua_close(g_L);
   
   for (size_t i = 0 ; i < g_maxsocket; i++)
@@ -601,8 +601,8 @@ int main(int argc,char *argv[])
   }
   
   if (!gf_foreground)
-    unlink(PID_FILE);	/* don't care if this succeeds or not */
-  
+    unlink(PID_FILE);   /* don't care if this succeeds or not */
+    
   /*------------------------------------------------------------------------
   ; Per http://www.cons.org/cracauer/sigint.html, the only proper way to
   ; exit a program that has received a SIGINT (or SIGQUIT) is to actually
@@ -616,7 +616,7 @@ int main(int argc,char *argv[])
   set_signal_handler(SIGINT,SIG_DFL);
   kill(getpid(),SIGINT);
   
-  return EXIT_SUCCESS;	/* keep this around to silence the compilers */
+  return EXIT_SUCCESS;  /* keep this around to silence the compilers */
 }
 
 /*************************************************************/
@@ -643,7 +643,7 @@ static Status ipv6_socket(const char *taddr)
   
   if (g_maxsocket == MAX_SOCKETS)
     return retstatus(false,EADDRNOTAVAIL,"ipv6_socket()");
-  
+    
   g_ipv6 = g_maxsocket++;
   inet_pton(AF_INET6,taddr,&g_sockets[g_ipv6].local.sin6.sin6_addr.s6_addr);
   g_sockets[g_ipv6].local.sin6.sin6_family = AF_INET6;
@@ -665,10 +665,10 @@ static Status local_socket(const char *name)
   if (g_maxsocket == MAX_SOCKETS)
     return retstatus(false,EADDRNOTAVAIL,"local_socket()");
     
-  local   = g_maxsocket++;  
+  local   = g_maxsocket++;
   oldmask = umask(0111);
   namelen = strlen(name);
-
+  
   if (namelen > sizeof(struct sockaddr_un) - 1)
     namelen = sizeof(struct sockaddr_un) - 1;
     
@@ -687,8 +687,8 @@ static Status create_socket(SocketNode listen,socklen_t saddr)
 {
   int reuse = 1;
   int flag;
-
-  assert(listen != NULL);  
+  
+  assert(listen != NULL);
   assert(saddr  >  0);
   
   listen->len  = saddr;
@@ -696,49 +696,49 @@ static Status create_socket(SocketNode listen,socklen_t saddr)
   
   if (setsockopt(listen->sock,SOL_SOCKET,SO_REUSEADDR,&reuse,sizeof(reuse)) == -1)
     return retstatus(false,errno,"setsockopt(REUSE)");
-
+    
   flag = fcntl(listen->sock,F_GETFL,0);
   if (flag == -1)
     return retstatus(false,errno,"fcntl(GETFL)");
-  
+    
   if (fcntl(listen->sock,F_SETFL,flag | O_NONBLOCK) == -1)
     return retstatus(false,errno,"fcntl(SETFL)");
-
+    
   if (bind(listen->sock,&listen->local.ss,saddr) == -1)
     return retstatus(false,errno,"bind()");
     
   /*--------------------------------------------------------------------
   ; For multicast addresses, inform the kernel *not* to loop the data back
   ; to us.  Syslog loops are *NOT* fun; trust me on this.
-  ;  
+  ;
   ; Also, Stevens (from _Unix Network Programming: The Sockets Networking
   ; API_, Volume 1, Third Edition_) notes the following for
   ; IP_MULTICAST_LOOP:
   ;
-  ;	The IPv4 TTL and loopback options take a u_char argument, while the
-  ;	IPv6 hop limit and loopback options take an int and u_int argument,
-  ;	respectively.  A common programming error with the IPv4 multicast
-  ;	options is to call setsockopt() with an int argument to specify the
-  ;	TTL or loopback (which is not allowed; pp. 354-355 of TCPv2), since
-  ;	most of the other socket options ... have integer arguments.  The
-  ;	change with IPv6 makes them more consistent with other options.
+  ;     The IPv4 TTL and loopback options take a u_char argument, while the
+  ;     IPv6 hop limit and loopback options take an int and u_int argument,
+  ;     respectively.  A common programming error with the IPv4 multicast
+  ;     options is to call setsockopt() with an int argument to specify the
+  ;     TTL or loopback (which is not allowed; pp. 354-355 of TCPv2), since
+  ;     most of the other socket options ... have integer arguments.  The
+  ;     change with IPv6 makes them more consistent with other options.
   ;
   ; (via http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=156232)
   ;
-  ; Also, check to see if the addresses are multicast addresses, and 
+  ; Also, check to see if the addresses are multicast addresses, and
   ; join in the appropriate multicast group.
   ;-----------------------------------------------------------------------*/
-
+  
   if (listen->local.ss.sa_family == AF_INET)
   {
     if (IN_MULTICAST(ntohl(listen->local.sin.sin_addr.s_addr)))
     {
       unsigned char  on = 0;
       struct ip_mreq mreq;
-
+      
       if (setsockopt(listen->sock,IPPROTO_IP,IP_MULTICAST_LOOP,&on,1) < 0)
         return retstatus(false,errno,"setsockopt(MULTICAST_LOOP)");
-      
+        
       mreq.imr_multiaddr        = listen->local.sin.sin_addr;
       mreq.imr_interface.s_addr = INADDR_ANY;
       if (setsockopt(listen->sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreq,sizeof(mreq)) < 0)
@@ -751,10 +751,10 @@ static Status create_socket(SocketNode listen,socklen_t saddr)
     {
       unsigned int     on = 0;
       struct ipv6_mreq mreq6;
-
+      
       if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,&on,sizeof(on)) < 0)
         return retstatus(false,errno,"setsockopt(MULTICAST6_LOOP)");
-      
+        
       mreq6.ipv6mr_multiaddr = listen->local.sin6.sin6_addr;
       mreq6.ipv6mr_interface = 0;
       if (setsockopt(listen->sock,IPPROTO_IPV6,IPV6_ADD_MEMBERSHIP,&mreq6,sizeof(mreq6)) < 0)
@@ -764,12 +764,12 @@ static Status create_socket(SocketNode listen,socklen_t saddr)
   
   return c_okay;
 }
- 
-/*****************************************************************/  
+
+/*****************************************************************/
 
 static void event_read(SocketNode sock)
 {
-  sockaddr_all remote;           
+  sockaddr_all remote;
   socklen_t    remsize;
   ssize_t      bytes;
   char         buffer[65536uL]; /* 65507 max size of UDP packet */
@@ -795,7 +795,7 @@ static void event_read(SocketNode sock)
   for (size_t i = 0 ; buffer[i] != '\0'; i++)
     if (iscntrl(buffer[i]))
       buffer[i] = ' ';
-  
+      
   syslog_interp(&sock->local,&remote,buffer,&buffer[bytes]);
 }
 
@@ -891,8 +891,8 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
   
   if (buffer[0] != '<')
   {
-    msg.facility = 1;	/* LOG_USER */
-    msg.level    = 5;	/* LOG_NOTICE */
+    msg.facility = 1;   /* LOG_USER */
+    msg.level    = 5;   /* LOG_NOTICE */
     msg.msg      = msg.raw;
     
     process_msg(&msg);
@@ -902,8 +902,8 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
   value = strtoul(&buffer[1],&p,10);
   if (*p++ != '>')
   {
-    msg.facility = 1;	/* LOG_USER */
-    msg.level    = 5;	/* LOG_NOTICE */
+    msg.facility = 1;   /* LOG_USER */
+    msg.level    = 5;   /* LOG_NOTICE */
     msg.msg      = msg.raw;
     
     process_msg(&msg);
@@ -918,10 +918,10 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
   ; exceed what we're expecting
   ;-------------------------------------------*/
   
-  if (msg.facility > 23)	/* LOG_LOCAL7 */
+  if (msg.facility > 23)        /* LOG_LOCAL7 */
   {
-    msg.facility = 1;	/* LOG_USER */
-    msg.level    = 5;	/* LOG_NOTICE */
+    msg.facility = 1;   /* LOG_USER */
+    msg.level    = 5;   /* LOG_NOTICE */
     msg.msg      = msg.raw;
     
     process_msg(&msg);
@@ -942,7 +942,7 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
       msg.facility = 1; /* LOG_USER */
       msg.level    = 5; /* LOG_NOTICE */
       msg.msg      = msg.raw;
-
+      
       process_msg(&msg);
       return;
     }
@@ -955,14 +955,14 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
   ; parse it as intended per RFC3164).  Thus, this code will fail if a
   ; hostname is sent, but it would also fail if the program name with an
   ; embedded space but no host is sent.
-  ; 
+  ;
   ; I suppose I could check to see if the first white-space delimited field
   ; *only* contains alphanumberics, but then it could fail on a message that
   ; is sent that contains neither a host nor a program (which is possible).
   ;
-  ; Pick your poison ... this works for me 
+  ; Pick your poison ... this works for me
   ;-------------------------------------------------------------------------*/
-
+  
   assert(p <= end);
   q = memchr(p,' ',(size_t)(end - p));
   
@@ -970,14 +970,14 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
   {
     size_t        len = (size_t)(q - p);
     char          addr[len + 1];
-    unsigned char addrip[16];	/* big enough */
+    unsigned char addrip[16];   /* big enough */
     int           rc;
     
     memcpy(addr,p,len);
     addr[len] = '\0';
     
     rc = inet_pton(AF_INET6,addr,&addrip);
-    if (rc == 1)	/* valid IPv6 address */
+    if (rc == 1)        /* valid IPv6 address */
     {
       msg.host.text = p;
       msg.host.size = len;
@@ -986,7 +986,7 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
     else
     {
       rc = inet_pton(AF_INET,addr,&addrip);
-      if (rc == 1)	/* valid IPv4 address */
+      if (rc == 1)      /* valid IPv4 address */
       {
         msg.host.text = p;
         msg.host.size = len;
@@ -994,7 +994,7 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
       }
     }
   }
-
+  
   /*-----------------------------------------------------------------------
   ; check for program field.  Quick and dirty check that works so far.
   ; Basically, we check for the ':' character, which appears to nearly
@@ -1024,9 +1024,9 @@ static void syslog_interp(sockaddr_all *ploc,sockaddr_all *pss,const char *buffe
     msg.program.size = (size_t)(b - p);
     
     for (p = q + 1 ; *p && isspace(*p) ; p++)
-      ;    
+      ;
   }
-
+  
   /*---------------------------------------------------
   ; whatever remains, however small, is the msg.
   ;---------------------------------------------------*/
@@ -1057,7 +1057,7 @@ static void process_msg(const struct msg *const pmsg)
   int         rc;
   
   assert(pmsg != NULL);
-
+  
 #ifdef CHECK_STRINGS
   clean_string(pmsg->raw);
   clean_string(pmsg->host);
@@ -1141,8 +1141,8 @@ static Status globalv_init(int argc,char *argv[])
   
   for (size_t i = 0 ; i < MAX_SOCKETS; i++)
     g_sockets[i].sock = -1;
-
-  opterr = 0;	/* prevent getopt_long() from printing error message */
+    
+  opterr = 0;   /* prevent getopt_long() from printing error message */
   
   while(true)
   {
@@ -1157,7 +1157,7 @@ static Status globalv_init(int argc,char *argv[])
       case OPT_VERSION:
            fprintf(stderr,"%s " VERSION "\n",basename(argv[0]));
            return retstatus(false,0,"");
-      case OPT_NONE: 
+      case OPT_NONE:
            break;
       case OPT_FG:
            gf_foreground = true;
@@ -1213,14 +1213,14 @@ static Status globalv_init(int argc,char *argv[])
                ; in some mounted directory---check comments in daemon_init()
                ; for more details.
                ;----------------------------------------------------------*/
-      
+               
                char  cwd[FILENAME_MAX];
                char *path;
-      
+               
                path = getcwd(cwd,FILENAME_MAX);
                if (path == NULL)
                  return retstatus(false,errno,"getcwd()");
-
+                 
                snprintf(luascript,FILENAME_MAX,"%s/%s",path,argv[optind]);
                g_luacode = luascript;
              }
@@ -1228,7 +1228,7 @@ static Status globalv_init(int argc,char *argv[])
            return c_okay;
     }
   }
-} 
+}
 
 /*****************************************************************/
 
@@ -1237,7 +1237,7 @@ static void usage(const char *progname)
   assert(progname != NULL);
   
   fprintf(
-  	stderr,
+        stderr,
         "usage: %s [options...] [luafile]\n"
         "\t-4 | --ip                       accept from IPv4 hosts\n"
         "\t   | --ip4                            \"\n"
@@ -1262,7 +1262,7 @@ static void usage(const char *progname)
         "\t" LUA_CODE "\tdefault luafile\n"
         "\n",
         progname,
-        MAX_SOCKETS - 3		/* possible IPv4, IPv6 and default local */
+        MAX_SOCKETS - 3         /* possible IPv4, IPv6 and default local */
   );
 }
 
@@ -1270,15 +1270,15 @@ static void usage(const char *progname)
 
 static Status drop_privs(void)
 {
-  if (g_user == NULL)	/* if no user specified, we won't drop */
+  if (g_user == NULL)   /* if no user specified, we won't drop */
     return c_okay;
     
-  if (getuid() != 0)	/* if not root, we can't drop privs */
+  if (getuid() != 0)    /* if not root, we can't drop privs */
     return c_okay;
-
+    
   long ubufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
   if (ubufsize < 0) ubufsize = BUFSIZ;
-    
+  
   char           ubuffer[ubufsize];
   struct passwd  uinfo;
   struct passwd *uresult;
@@ -1310,30 +1310,30 @@ static Status drop_privs(void)
   }
   else
     ginfo.gr_gid = uinfo.pw_gid;
-  
+    
   /*------------------------------------------------------------------------
-  ; it's here we change the ownership of the PID file and any unix sockets. 
+  ; it's here we change the ownership of the PID file and any unix sockets.
   ; I don't care about the return value, as it may not even exist (because
   ; we might not have had perms to create it in the first place.
   ;------------------------------------------------------------------------*/
   
-  chown(PID_FILE,uinfo.pw_uid,ginfo.gr_gid);	/* don't care about results */
-
+  chown(PID_FILE,uinfo.pw_uid,ginfo.gr_gid);    /* don't care about results */
+  
   for (size_t i = 0 ; i < g_maxsocket ; i++)
     if (g_sockets[i].local.ss.sa_family == AF_LOCAL)
       chown(g_sockets[i].local.ssun.sun_path,uinfo.pw_uid,ginfo.gr_gid);
-
+      
   /*-------------------------------------------------------------------
   ; change our group id first, then user id.  If we drop user id first,
   ; we may not be able to change our group id!
   ;-------------------------------------------------------------------*/
-
+  
   if (setregid(ginfo.gr_gid,ginfo.gr_gid) == -1)
     return retstatus(false,errno,"setregid()");
     
   if (setreuid(uinfo.pw_uid,uinfo.pw_uid) == -1)
     return retstatus(false,errno,"getreuid()");
-  
+    
   internal_log(LOG_DEBUG,"dropped privs to %s:%s",g_user,g_group);
   return c_okay;
 }
@@ -1380,13 +1380,13 @@ static Status daemon_init(void)
   ;    the new process is guaranteed not to be a process group leader. The
   ;    next step, 'setsid()', fails if you're a process group leader.
   ;---------------------------------------------------------------------*/
-             
+  
   pid = fork();
   if (pid == (pid_t)-1)
     return retstatus(false,errno,"fork()");
-  else if (pid != 0)	/* parent goes bye bye */
+  else if (pid != 0)    /* parent goes bye bye */
     _exit(EXIT_SUCCESS);
-  
+    
   /*-------------------------------------------------------------------------
   ; 2. 'setsid()' to become a process group and session group leader. Since
   ;    a controlling terminal is associated with a session, and this new
@@ -1396,48 +1396,48 @@ static Status daemon_init(void)
   ;    _Advanced Programming in the Unix Environment_, 2nd Edition, also
   ;    ignores SIGHUP.  So adding that here as well.
   ;-----------------------------------------------------------------------*/
-
+  
   setsid();
-  set_signal_handler(SIGHUP,SIG_IGN);	/* ignore this signal for now */
-
+  set_signal_handler(SIGHUP,SIG_IGN);   /* ignore this signal for now */
+  
   /*-------------------------------------------------------------------------
-  ; 3. 'fork()' again so the parent, (the session group leader), can exit. 
+  ; 3. 'fork()' again so the parent, (the session group leader), can exit.
   ;    This means that we, as a non-session group leader, can never regain a
   ;    controlling terminal.
   ;------------------------------------------------------------------------*/
-
+  
   pid = fork();
   if (pid == (pid_t)-1)
     return retstatus(false,errno,"fork(2)");
-  else if (pid != 0)	/* parent goes bye bye */
+  else if (pid != 0)    /* parent goes bye bye */
     _exit(EXIT_SUCCESS);
-  
+    
   /*-------------------------------------------------------------------------
   ; 4. 'chdir("/")' to ensure that our process doesn't keep any directory in
   ;    use. Failure to do this could make it so that an administrator
   ;    couldn't unmount a filesystem, because it was our current directory.
   ;
   ;    [Equivalently, we could change to any directory containing files
-  ;    important to the daemon's operation.] 
+  ;    important to the daemon's operation.]
   ;
   ; I just made sure the name of the script we are using contains the full
   ; path.
   ;-------------------------------------------------------------------------*/
-            
+  
   chdir("/");
   
   /*-----------------------------------------------------------------------
   ; 5. 'umask(022)' so that we have complete control over the permissions of
   ;    anything we write. We don't know what umask we may have inherited.
   ;-----------------------------------------------------------------------*/
-
-  umask(022);       
+  
+  umask(022);
   
   /*-----------------------------------------------------------------------
   ; 6. 'close()' fds 0, 1, and 2. This releases the standard in, out, and
   ;    error we inherited from our parent process. We have no way of knowing
   ;    where these fds might have been redirected to. Note that many daemons
-  ;    use 'sysconf()' to determine the limit '_SC_OPEN_MAX'. 
+  ;    use 'sysconf()' to determine the limit '_SC_OPEN_MAX'.
   ;    '_SC_OPEN_MAX' tells you the maximun open files/process. Then in a
   ;    loop, the daemon can close all possible file descriptors. You have to
   ;    decide if you need to do this or not.  If you think that there might
@@ -1454,11 +1454,11 @@ static Status daemon_init(void)
   ;
   ; We do this here via dup2(), which combines steps 6 & 7.
   ;------------------------------------------------------------------------*/
-
+  
   fh = open(DEV_NULL,O_RDWR);
   if (fh == -1)
     return retstatus(false,errno,"open(" DEV_NULL ")");
-  
+    
   assert(fh > 2);
   
   dup2(fh,STDIN_FILENO);
@@ -1469,7 +1469,7 @@ static Status daemon_init(void)
   
   return c_okay;
 }
-  
+
 /***********************************************************************/
 
 static int map_str_to_int(const char *name,const char *const list[],size_t size)
@@ -1531,7 +1531,7 @@ static int syslogintr_alarm(lua_State *L)
     return luaL_error(L,"not enough arguments");
   else if (pcount > 1)
     return luaL_error(L,"too many arguments");
-  
+    
   if (lua_isnumber(L,1))
     g_alarm = lua_tointeger(L,1);
   else if (lua_isstring(L,1))
@@ -1551,7 +1551,7 @@ static int syslogintr_alarm(lua_State *L)
   }
   else
     return luaL_error(L,"expected number or string");
-
+    
   internal_log(LOG_DEBUG,"Alarm PID: %lu",(unsigned long)getpid());
   internal_log(LOG_DEBUG,"Alarm set for %d seconds",g_alarm);
   
@@ -1560,7 +1560,7 @@ static int syslogintr_alarm(lua_State *L)
   
   if (setitimer(ITIMER_REAL,&set,NULL) == -1)
     internal_log(LOG_WARNING,"setitimer() = %s",strerror(errno));
-  
+    
   lua_pop(L,1);
   return 0;
 }
@@ -1580,17 +1580,17 @@ static int syslogintr_ud__toprint(lua_State *L)
   
   switch(paddr->local.ss.sa_family)
   {
-    case AF_INET:  
+    case AF_INET:
          r = inet_ntop(AF_INET, &paddr->local.sin.sin_addr.s_addr,taddr,INET6_ADDRSTRLEN);
          break;
-    case AF_INET6: 
+    case AF_INET6:
          r = inet_ntop(AF_INET6,&paddr->local.sin6.sin6_addr.s6_addr,taddr,INET6_ADDRSTRLEN);
          break;
     case AF_LOCAL:
          memcpy(taddr,paddr->local.ssun.sun_path,sizeof(paddr->local.ssun.sun_path));
          r = taddr;
          break;
-    default: 
+    default:
          lua_pushnil(L);
          return 1;
   }
@@ -1599,7 +1599,7 @@ static int syslogintr_ud__toprint(lua_State *L)
     lua_pushliteral(L,"");
   else
     lua_pushstring(L,taddr);
-
+    
   return 1;
 }
 
@@ -1635,21 +1635,21 @@ static int syslogintr_host(lua_State *L)
   
   switch(results[0].ai_addr->sa_family)
   {
-    case AF_INET:  
+    case AF_INET:
          paddr->len  = sizeof(struct sockaddr_in);
-         paddr->sock = socket(AF_INET, SOCK_DGRAM,0); 
+         paddr->sock = socket(AF_INET, SOCK_DGRAM,0);
          break;
-    case AF_INET6: 
+    case AF_INET6:
          paddr->len  = sizeof(struct sockaddr_in6);
-         paddr->sock = socket(AF_INET6,SOCK_DGRAM,0); 
+         paddr->sock = socket(AF_INET6,SOCK_DGRAM,0);
          break;
-    default: 
+    default:
          internal_log(LOG_WARNING,"unexpected family for address");
          freeaddrinfo(results);
          lua_pushnil(L);
          return 1;
   }
-    
+  
   luaL_getmetatable(L,LUA_UD_HOST);
   lua_setmetatable(L,-2);
   memcpy(&paddr->local,results[0].ai_addr,results[0].ai_addrlen);
@@ -1687,7 +1687,7 @@ static int syslogintr_lsock(lua_State *L)
   paddr                        = lua_newuserdata(L,sizeof(struct socket_node));
   paddr->local.ssun.sun_family = AF_LOCAL;
   paddr->len                   = sizeof(struct sockaddr_un);
-  paddr->sock                  = sock;  
+  paddr->sock                  = sock;
   memset(paddr->local.ssun.sun_path,0,sizeof(paddr->local.ssun.sun_path));
   memcpy(paddr->local.ssun.sun_path,unixsocket,ussize);
   
@@ -1738,7 +1738,7 @@ static int syslogintr_relay(lua_State *L)
   
   localtime_r(&msg.logtimestamp,&stm);
   strftime(date,sizeof(date),"%b %d %H:%M:%S",&stm);
-
+  
   p   = output;
   max = BUFSIZ;
   
@@ -1748,7 +1748,7 @@ static int syslogintr_relay(lua_State *L)
   
   if (msg.remote)
   {
-    assert(msg.host.size > 0);    
+    assert(msg.host.size > 0);
     size = snprintf(p,max,"%s ",msg.host.text);
     max -= size;
     p   += size;
@@ -1766,7 +1766,7 @@ static int syslogintr_relay(lua_State *L)
   
   size = snprintf(p,max,": %s",msg.msg.text);
   size = (size_t)((p + size) - output);
-
+  
   if (size > MAX_MSGLEN)
   {
     size = MAX_MSGLEN;
@@ -1783,7 +1783,7 @@ static int syslogintr_relay(lua_State *L)
   ; would result.
   ;--------------------------------------------------------------*/
   
-  lua_pop(L,11);	/* 2 input, 9 fetches */
+  lua_pop(L,11);        /* 2 input, 9 fetches */
   return 0;
 }
 
@@ -1818,8 +1818,8 @@ static void internal_log(int priority,const char *format, ... )
   struct msg *msg;
   int         size;
   
-  assert(priority >  -1);	/* min priority is 0	*/
-  assert(priority <   8);	/* max priority level	*/
+  assert(priority >  -1);       /* min priority is 0    */
+  assert(priority <   8);       /* max priority level   */
   assert(format   != NULL);
   
   buffer = malloc(BUFSIZ);

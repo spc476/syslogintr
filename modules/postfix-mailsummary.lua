@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -25,8 +25,8 @@
 --
 -- *********************************************************************
 
-if maillist == nil then	-- protect against reloading
-  maillist = {}		-- used to store loglines as they come in
+if maillist == nil then -- protect against reloading
+  maillist = {}         -- used to store loglines as they come in
 end
 
 -- ********************************************************************
@@ -58,7 +58,7 @@ function postfix_mailsummary(msg)
     end
     return maillist[id]
   end
-
+  
   if string.match(msg.msg,'^%S+%: client=.*') then
     id,data      = string.match(msg.msg,'^(%S+)%: client=(.*)$')
     if id == nil then
@@ -67,7 +67,7 @@ function postfix_mailsummary(msg)
     email        = getemail(id)
     email.client = data
     return false
-
+    
   elseif string.match(msg.msg,'^%S+%: message%-id=.*') then
     id,data  = string.match(msg.msg,'^(%S+)%: message%-id=%<(%S+)%>')
     if id == nil then
@@ -76,7 +76,7 @@ function postfix_mailsummary(msg)
     email    = getemail(id)
     email.id = data
     return false
-
+    
   elseif string.match(msg.msg,'^%S+%: from=.*') then
     id,data    = string.match(msg.msg,'^(%S+)%: from=%<(%S*)%>')
     if id == nil then
@@ -85,7 +85,7 @@ function postfix_mailsummary(msg)
     email      = getemail(id)
     email.from = data
     return false
-
+    
   elseif string.match(msg.msg,'^%S+%: to=.*') then
     id,data  = string.match(msg.msg,'^(%S+)%: to=%<(%S+)%>')
     if id == nil then
@@ -94,32 +94,32 @@ function postfix_mailsummary(msg)
     email    = getemail(id)
     email.to = data
     return false
-
+    
   elseif string.match(msg.msg,'^%S+%: removed') then
     id = string.match(msg.msg,'^(%S+)%:')
     
     if id == nil then
       return true
     end
-
+    
     email = getemail(id)
-
+    
     if email.client == nil then email.client = "(na)" end
     if email.from   == nil then email.from   = ""     end
     if email.to     == nil then email.to     = "(na)" end
     if email.id     == nil then email.id     = "<na>" end
-
+    
     msg.program = 'summary/mail'
     msg.msg     = string.format(
-    			"client=%s message-id=<%s> from=<%s> to=<%s>",
-    			email.client,
-    			email.id,
-    			email.from,
-    			email.to
-    			)    	
+                        "client=%s message-id=<%s> from=<%s> to=<%s>",
+                        email.client,
+                        email.id,
+                        email.from,
+                        email.to
+                        )
     maillist[id] = nil
     return true
   end
-
+  
   return false
-end	
+end

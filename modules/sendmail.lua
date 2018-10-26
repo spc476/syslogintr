@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -19,15 +19,15 @@
 --
 -- ********************************************************************
 --
--- Send an email.  
+-- Send an email.
 --
 -- send_email(email)
 --
---	email 		-- table with the following fields (all required):
---		email.from		-- From: address
---		email.to		-- To: address (can be an array)
---		email.subject		-- Subject: line
---		email.body		-- body of email
+--      email           -- table with the following fields (all required):
+--              email.from              -- From: address
+--              email.to                -- To: address (can be an array)
+--              email.subject           -- Subject: line
+--              email.body              -- body of email
 --
 -- *********************************************************************
 
@@ -53,27 +53,27 @@ Date: %s
 %s
 
 ]],
-	email.from,
-	email.to,
-	email.subject,
-	os.date("%a, %d %b %Y %H:%M:%S %Z",os.time()),
-	email.body))
+        email.from,
+        email.to,
+        email.subject,
+        os.date("%a, %d %b %Y %H:%M:%S %Z",os.time()),
+        email.body))
   exec:close()
   exec = nil
   
   I_log("debug","sent email to " .. email.to)
 end
-  
+
 -- *********************************************************************
 
 function send_email(email)
   if type(email.to) == 'table' then
     for i = 1 , #email.to do
       send_the_email{
-      	from    = email.from,
-      	to      = email.to[i],
-      	subject = email.subject,
-      	body    = email.body
+        from    = email.from,
+        to      = email.to[i],
+        subject = email.subject,
+        body    = email.body
       }
     end
   else

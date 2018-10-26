@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -32,14 +32,14 @@ end
 
 function log(msg)
   logfile:write(string.format(
-  		"%15.15s | %-25.25s | %-8s %6s | %s | %s\n",
-  		msg.host,
-  		msg.program,
-  		msg.facility,
-  		msg.level,
-  		os.date("%c",msg.timestamp),
-  		msg.msg
-  	))
+                "%15.15s | %-25.25s | %-8s %6s | %s | %s\n",
+                msg.host,
+                msg.program,
+                msg.facility,
+                msg.level,
+                os.date("%c",msg.timestamp),
+                msg.msg
+        ))
   logfile:flush()
   relay(homebase,msg)
 end

@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2009 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -18,35 +18,35 @@
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
 -- ********************************************************************
--- 
+--
 -- delta_time(diff)
 --
 -- Returns a string that represents the output from os.difftime()
--- 
+--
 -- ******************************************************************
 
 function delta_time(diff)
 
   if diff == 0 then return "0s" end
-
+  
   local SECSMIN  = 60.0
   local SECSHOUR = SECSMIN  * 60.0
   local SECSDAY  = SECSHOUR * 24.0
   local SECSYEAR = SECSDAY  * 365.242199
-
+  
   local year = math.floor(diff / SECSYEAR) diff = diff - (year * SECSYEAR)
   local day  = math.floor(diff / SECSDAY)  diff = diff - (day  * SECSDAY)
   local hour = math.floor(diff / SECSHOUR) diff = diff - (hour * SECSHOUR)
   local min  = math.floor(diff / SECSMIN)  diff = diff - (min  * SECSMIN)
   local sec  = math.floor(diff)
   local out  = ""
-
+  
   if year ~= 0 then out = out .. string.format("%dy",year)  end
   if day  ~= 0 then out = out .. string.format("_%dd",day)  end
   if hour ~= 0 then out = out .. string.format("_%dh",hour) end
   if min  ~= 0 then out = out .. string.format("_%dm",min)  end
   if sec  ~= 0 then out = out .. string.format("_%ds",sec)  end
-
+  
   return out
 end
 

@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -19,25 +19,25 @@
 --
 -- ********************************************************************
 --
--- A simple template processor.  
--- 
+-- A simple template processor.
+--
 -- template(text,callbacks,data)
 --
---	text 		-- string that is the template
---	callbacks	-- replacement values
---	data		-- block (not touched by template()) that can be used
---			   for user specific data
+--      text            -- string that is the template
+--      callbacks       -- replacement values
+--      data            -- block (not touched by template()) that can be used
+--                         for user specific data
 --
 -- Example usage:
---	body = "Hello %{name}%, you have called %{times}% times."
---	callbacks = 
---	{
---		name = "Sean Conner",
---		times = function(data) return tostring(data) end
---	}
---	times_called = 1
+--      body = "Hello %{name}%, you have called %{times}% times."
+--      callbacks =
+--      {
+--              name = "Sean Conner",
+--              times = function(data) return tostring(data) end
+--      }
+--      times_called = 1
 --
---	print(template(body,callbacks,times_called))
+--      print(template(body,callbacks,times_called))
 --
 -- **********************************************************************
 

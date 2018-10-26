@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2013 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -22,15 +22,15 @@
 -- collect logs from proftpd, and if there are 5 fail attempts at logging
 -- in, block the offending IP address.
 --
--- proftp(msg)		-- check for proftpd messages and track failed logins
--- proftp_remove()	-- periodically call this to remove old blocked IP
---			   addresses
+-- proftp(msg)          -- check for proftpd messages and track failed logins
+-- proftp_remove()      -- periodically call this to remove old blocked IP
+--                         addresses
 --
 -- This module assume the use of iptables.  Please make sure you have
 -- run the following:
 --
---	iptables -N proftp-block
---	iptables -A INPUT -p tcp --dport 21 -j proftp-block
+--      iptables -N proftp-block
+--      iptables -A INPUT -p tcp --dport 21 -j proftp-block
 --
 -- ***********************************************************************
 
@@ -49,18 +49,18 @@ function proftp(msg)
   if msg.program  ~= "proftpd" then return end
   if msg.facility ~= "daemon"  then return end
   if msg.level    ~= "notice"  then return end
-
+  
   local ip = string.match(msg.msg,"USER %S+: no such user found from ::ffff:([%d%.]+)")
   if ip == nil then return end
-
+  
   I_log("debug","Found IP:" .. ip)
   
   proftp_blocked[ip] = proftp_blocked[ip] + 1
-
+  
   if proftp_blocked[ip] == 5 then
     local cmd = "iptables --table filter --append proftp-block --source " .. ip .. " --jump REJECT"
-    I_log("debug","Command to block: " .. cmd)    
-    os.execute(cmd)    
+    I_log("debug","Command to block: " .. cmd)
+    os.execute(cmd)
     I_log("info","Blocked " .. ip .. " from ProFTPd")
     table.insert(proftp_blocked,{ ip = ip , when = msg.timestamp} )
   end
