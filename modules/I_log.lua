@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -24,17 +24,19 @@
 -- Beware of logging loops though.
 --
 -- *******************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals I_prlog I_log log script
 
 function I_prlog(program,level,msg)
   log{
-  	host      = "(internal)",
-  	remote    = false,
-  	program   = program,
-	pid       = 0,
-  	facility  = "syslog",
-  	level     = level,
-  	timestamp = os.time(),
-  	msg       = msg
+        host      = "(internal)",
+        remote    = false,
+        program   = program,
+        pid       = 0,
+        facility  = "syslog",
+        level     = level,
+        timestamp = os.time(),
+        msg       = msg
   }
 end
 

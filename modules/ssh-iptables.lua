@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -20,22 +20,23 @@
 -- ********************************************************************
 --
 -- collect logs from ssh, and if there are 5 fail attempts at logging in,
--- block the offending IP address.  
+-- block the offending IP address.
 --
--- sshd(msg)		-- check for ssh messages and track failed logins
--- sshd_remove()	-- periodically call this to remove old blocked IP
---			   addresses
+-- sshd(msg)            -- check for ssh messages and track failed logins
+-- sshd_remove()        -- periodically call this to remove old blocked IP
+--                         addresses
 --
 -- This module assume the use of iptables.  It also adds rules to the
 -- main chain.  This should be fixed.
 --
 -- ***********************************************************************
-
+-- luacheck: ignore 611
+-- luacheck: globals ssh_blocked sshd I_log sshd_remove sshd_cleanup
 require "I_log"
 
 if ssh_blocked == nil then
   ssh_blocked = {}
-  setmetatable(ssh_blocked,{ __index = function(t,k) return 0 end })
+  setmetatable(ssh_blocked,{ __index = function() return 0 end })
   os.execute("iptables --table filter -F ssh-block")
 end
 
@@ -46,18 +47,18 @@ function sshd(msg)
   if msg.program  ~= "sshd"  then return end
   if msg.facility ~= "auth2" then return end
   if msg.level    ~= "info"  then return end
-
+  
   local ip = string.match(msg.msg,"^Failed password for .* from ([%d%.]+) .*")
   if ip == nil then return end
-
+  
   I_log("debug","Found IP:" .. ip)
   
   ssh_blocked[ip] = ssh_blocked[ip] + 1
-
+  
   if ssh_blocked[ip] == 5 then
     local cmd = "iptables --table filter --append ssh-block --source " .. ip .. " --jump REJECT"
-    I_log("debug","Command to block: " .. cmd)    
-    os.execute(cmd)    
+    I_log("debug","Command to block: " .. cmd)
+    os.execute(cmd)
     I_log("info","Blocked " .. ip .. " from SSH")
     table.insert(ssh_blocked,{ ip = ip , when = msg.timestamp} )
   end
@@ -74,8 +75,8 @@ function sshd_remove()
     -- being blocked for two weeks.
     -- --------------------------------------------------------------------
     
-    if now - ssh_blocked[1].when < 2629800 then 
-      return 
+    if now - ssh_blocked[1].when < 2629800 then
+      return
     end
     
     local ip = ssh_blocked[1].ip
@@ -94,7 +95,7 @@ end
 
 function sshd_cleanup()
   ssh_blocked = {}
-  setmetatable(ssh_blocked,{ __index = function(t,k) return 0 end })
+  setmetatable(ssh_blocked,{ __index = function() return 0 end })
   os.execute("iptables --table filter -F ssh-block")
 end
 

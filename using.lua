@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -25,6 +25,11 @@
 -- instance of syslogintr) so that I can view the logs in realtime.
 --
 -- ************************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals logfile alarm logger reload_signal alarm_handler log
+-- luacheck: globals host cleanup log_to_file log_hostcounts I_log
+-- luacheck: globals sshd_remove sshd relay script inc_hosecount
+-- luacheck: globals sshd_cleanup inc_hostcount
 
 require "I_log"
 require "hostcounts"
@@ -46,10 +51,10 @@ function reload_signal()
     logfile:close()
     logfile = io.open("/var/log/syslog","a") or io.stdout
   end
-
-  log_hostcounts()  
+  
+  log_hostcounts()
   I_log("debug","signal received loud and clear and reset logfile")
-
+  
 end
 
 -- *******************************************************
@@ -82,8 +87,8 @@ function log(msg)
   -- for that.
   -- ====================================================
   
-  if msg.host == '192.168.1.16' 
-  or msg.host == 'fc00::3' 
+  if msg.host == '192.168.1.16'
+  or msg.host == 'fc00::3'
   then
     local program = string.match(msg.program,'^.*%s+(.*)')
     if program ~= nil then
@@ -112,18 +117,18 @@ function log(msg)
   
   -- ====================================================
   -- skip logging anything from program 'com.apple.usbmuxd'
-  -- but do relay it ... 
+  -- but do relay it ...
   -- ====================================================
   
   if msg.program == 'com.apple.usbmuxd' then
     relay(logger,msg)
     return
   end
-
+  
   -- ====================================================
   -- fix nagios logging messages
   -- ====================================================
-
+  
   if msg.program == 'nagios' then
     if msg.msg:match("Warning:") then
       msg.level = 'warn'
@@ -131,8 +136,8 @@ function log(msg)
       msg.level = 'err'
     end
   end
-
-  inc_hostcount(msg.host)  
+  
+  inc_hostcount(msg.host)
   log_to_file(logfile,msg)
   sshd(msg)
   relay(logger,msg)
@@ -153,15 +158,15 @@ function log_to_file(file,msg)
     I_log("err","bad parse: " .. msg._RAW)
     return
   end
-
+  
   file:write(string.format(
-  	"%s\t%s\t%s\t%s\t%s\t%s\n",
-  	os.date("%b %d %H:%M:%S",msg.timestamp),
-  	msg.facility,
-  	msg.level,
-  	msg.host,
-  	msg.program,
-  	msg.msg
+        "%s\t%s\t%s\t%s\t%s\t%s\n",
+        os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.facility,
+        msg.level,
+        msg.host,
+        msg.program,
+        msg.msg
   ))
   --file:flush()
 end

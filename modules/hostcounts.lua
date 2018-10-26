@@ -1,7 +1,7 @@
 -- ***************************************************************
 --
 -- Copyright 2010 by Sean Conner.  All Rights Reserved.
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -19,18 +19,21 @@
 --
 -- ********************************************************************
 --
--- Keep a count of the remote hosts sending in log messages.  
+-- Keep a count of the remote hosts sending in log messages.
 --
--- inc_hostcount(host)		-- call for each message received
--- log_hostcounts()		-- call to log number of msgs from each host.
---				   The counters are reset to 0.
+-- inc_hostcount(host)          -- call for each message received
+-- log_hostcounts()             -- call to log number of msgs from each host.
+--                                 The counters are reset to 0.
 --
 -- ***********************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals hostcount log_hostcounts inc_hostcount
+-- luacheck: globals I_prlog
 
 require "I_log"
 
 if hostcount == nil then
-  hostcount = setmetatable({},{__index = function(t,k) return 0 end })
+  hostcount = setmetatable({},{__index = function() return 0 end })
 end
 
 -- ********************************************************************
