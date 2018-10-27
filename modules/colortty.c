@@ -52,7 +52,6 @@
 
 #include <lua.h>
 #include <lauxlib.h>
-#include <lualib.h>
 
 /*************************************************************************/
 
@@ -64,18 +63,16 @@ static volatile sig_atomic_t mf_sigwinch;
 
 static void handler_sigwinch(int sig)
 {
-  (void)sig;
-  mf_sigwinch = 1;
+  mf_sigwinch = sig;
 }
 
 /**************************************************************************/
 
 static int colortty(lua_State *L)
 {
-  const char *txt;
-  size_t      len;
-  size_t      cnt;
-  size_t      size;
+  const char *txt = luaL_checkstring(L,1);
+  luaL_Buffer buf;
+  int         cnt = 0;
   
   if (mf_sigwinch)
   {
@@ -89,54 +86,44 @@ static int colortty(lua_State *L)
     mf_sigwinch = 0;
   }
   
-  txt = luaL_checklstring(L,1,&size);
-  len = 0;
-  cnt = 0;
-  
-  char buffer[size + 1];
+  luaL_buffinit(L,&buf);
   
   while(*txt)
   {
-    if (*txt == '\n')
-      cnt = 0;
-      
-    if (cnt == (unsigned)m_width)
+    if (cnt == m_width)
+      break;
+    else if (*txt == '\n')
+      break;
+    else if (*txt == 0x1B)
     {
-      txt++;
-      continue;
-    }
-    
-    if (*txt == 0x1B)
-    {
-      buffer[len++] = *txt++;
+      luaL_addchar(&buf,*txt++);
       if (*txt == '[')
       {
-        buffer[len++] = *txt++;
-        while(*txt < '@')
-          buffer[len++] = *txt++;
+        luaL_addchar(&buf,*txt++);
+        while (*txt < '@')
+          luaL_addchar(&buf,*txt++);
       }
       else if (*txt == '(')
-        buffer[len++] = *txt++;
+        luaL_addchar(&buf,*txt++);
         
-      buffer[len++] = *txt++;
-      continue;
+      luaL_addchar(&buf,*txt++);
     }
-    
-    if ((unsigned char)*txt == 0x9B)
+    else if ((unsigned char)*txt == 0x9B)
     {
-      buffer[len++] = *txt++;
-      while(*txt < '@')
-        buffer[len++] = *txt++;
-      buffer[len++] = *txt++;
-      continue;
+      luaL_addchar(&buf,*txt++);
+      while (*txt < '@')
+        luaL_addchar(&buf,*txt++);
+      luaL_addchar(&buf,*txt++);
     }
-    
-    cnt++;
-    buffer[len++] = *txt++;
+    else
+    {
+      cnt++;
+      luaL_addchar(&buf,*txt++);
+    }
   }
   
-  buffer[len] = '\0';
-  lua_pushlstring(L,buffer,len);
+  luaL_addchar(&buf,'\n');
+  luaL_pushresult(&buf);
   return 1;
 }
 
@@ -156,9 +143,11 @@ int luaopen_colortty(lua_State *L)
   {
     m_width  = size.ws_col;
     m_height = size.ws_row;
+    
     sigemptyset(&act.sa_mask);
     act.sa_handler = handler_sigwinch;
     act.sa_flags   = SA_RESTART;
+    
     if (sigaction(SIGWINCH,&act,NULL) < 0)
       return luaL_error(L,"sigaction() = %s",strerror(errno));
   }
