@@ -58,14 +58,13 @@
 
 static int                   m_width;
 static int                   m_height;
-static int                   mf_tty;
 static volatile sig_atomic_t mf_sigwinch;
 
 /**************************************************************************/
 
 static void handler_sigwinch(int sig)
 {
-  assert(sig == SIGWINCH);
+  (void)sig;
   mf_sigwinch = 1;
 }
 
@@ -78,7 +77,7 @@ static int colortty(lua_State *L)
   size_t      cnt;
   size_t      size;
   
-  if (mf_sigwinch && mf_tty)
+  if (mf_sigwinch)
   {
     struct winsize size;
     
@@ -147,28 +146,24 @@ int luaopen_colortty(lua_State *L)
 {
   struct winsize   size;
   struct sigaction act;
-  struct sigaction oact;
   
   if (!isatty(STDOUT_FILENO))
   {
-    mf_tty   = 0;
     m_width  = INT_MAX;
     m_height = INT_MAX;
   }
   else if (ioctl(STDOUT_FILENO,TIOCGWINSZ,&size) == 0)
   {
-    mf_tty   = 1;
     m_width  = size.ws_col;
     m_height = size.ws_row;
     sigemptyset(&act.sa_mask);
     act.sa_handler = handler_sigwinch;
     act.sa_flags   = SA_RESTART;
-    if (sigaction(SIGWINCH,&act,&oact) < 0)
+    if (sigaction(SIGWINCH,&act,NULL) < 0)
       return luaL_error(L,"sigaction() = %s",strerror(errno));
   }
   else
   {
-    mf_tty   = 0;
     m_width  = 80;
     m_height = 24;
   }
