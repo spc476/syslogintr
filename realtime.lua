@@ -33,10 +33,12 @@
 -- Makes for a pretty display.
 --
 -- *********************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals log
 
-require "colortty"
+local colortty = require "colortty"
 
-colors =
+local colors =
 {
   emerg  = "\27[1;31m",
   alert  = "\27[0;31m",

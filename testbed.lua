@@ -26,6 +26,9 @@
 -- to run this test.
 --
 -- ***********************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals alarm host relay log cleanup
+-- luacheck: globals script scriptpath g_hosts
 
 if #arg == 0 then
   scriptpath = "/usr/local/sbin/syslog.lua"
@@ -35,9 +38,9 @@ else
   script     = arg[2]
 end
 
-function alarm(time) end
-function host(name) return "localhost" end
-function relay(where,msg) end
+function alarm(time) end                   -- luacheck: ignore
+function host(name) return "localhost" end -- luacheck: ignore
+function relay(where,msg) end              -- luacheck: ignore
 
 dofile(scriptpath)
 
@@ -52,7 +55,7 @@ g_hosts =
 
 -- ***********************************************************************
 
-function test_levels(msg)
+local function test_levels(msg)
   local levels = {
                         "emerg" , "alert"  , "crit"  , "err" ,
                         "warn"  , "notice" , "info"  , "debug"
@@ -72,7 +75,7 @@ end
 
 -- ************************************************************************
 
-function test_facilities(msg)
+local function test_facilities(msg)
   local facilities = {
                         "kernel" , "user"   , "mail"   , "daemon" ,
                         "auth1"  , "syslog" , "lpr"    , "news" ,
@@ -91,7 +94,7 @@ end
 
 -- **************************************************************************
 
-function test_hosts(msg)
+local function test_hosts(msg)
   for i = 1 , #g_hosts do
     msg.remote = g_hosts[i].remote
     msg.host   = g_hosts[i].host
@@ -103,7 +106,7 @@ end
 
 -- ************************************************************************
 
-function test_script()
+local function test_script()
   local msg = {}
   
   msg.version      = 0

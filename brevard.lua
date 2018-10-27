@@ -29,27 +29,65 @@
 -- This configuration is pretty straight forward.
 --
 -- ***************************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals alarm host relay script
+-- luacheck: globals logfiles alarm_handler log cleanup reload_signal
 
-require "I_log"
-require "deltatime"
-require "check_apache"
-require "check_bind"
-require "postfix-mailsummary"
-require "ssh-iptables"
+local I_log               = require "I_log"
+local check_apache        = require "check_apache"
+local check_bind          = require "check_bind"
+local postfix_mailsummary = require "postfix-mailsummary"
+local ssh                 = require "ssh-iptables"
+
+local homebase = host("74.173.118.3")
 
 -- **********************************************************************
 
+local function open_files()
+  logfiles        = {}
+  logfiles.auth1  = io.open("/var/log/auth.log",  "a")
+  logfiles.mail   = io.open("/var/log/mail.log",  "a")
+  logfiles.daemon = io.open("/var/log/daemon.log","a")
+  logfiles.kern   = io.open("/var/log/kern.log",  "a")
+  logfiles.cron1  = io.open("/var/log/cron.log",  "a")
+  logfiles.user   = io.open("/var/log/misc.log",  "a")
+  logfiles.local0 = io.open("/var/log/local.log" ,"a")
+  logfiles.local1 = logfiles.local0
+  logfiles.local2 = logfiles.local0
+  logfiles.local3 = logfiles.local0
+  logfiles.local4 = logfiles.local0
+  logfiles.local5 = io.open("/var/log/local5.log","a")
+  logfiles.local6 = io.open("/var/log/local6.log","a")
+  logfiles.local7 = logfiles.local0
+end
+
+-- **********************************************************************
+
+local function log_to_file(file,msg)
+  file:write(string.format(
+        "%s %s %s: %s\n",
+        os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.host,
+        msg.program,
+        msg.msg
+  ));
+  file:flush()
+end
+
+-- ******************************************************************
+
 function alarm_handler()
-  check_nameserver{
+  check_bind {
         from = "root@conman.org",
         to   = "spc@conman.org"
   }
-  check_webserver{
-        url     = "http://www.conman.org/server-status\?auto",
+  check_apache{
+        url     = "http://www.conman.org/server-status/?auto",
         from    = "root@conman.org",
         to      = "spc@conman.org",
         subject = "WWW.CONMAN.ORG WEBSITE DOWN!"
   }
+  ssh.remove()
 end
 
 -- **********************************************************************
@@ -64,32 +102,10 @@ function cleanup()
   logfiles.local6:close()
   logfiles.local0:close()
   logfiles.user:close()
+  ssh.cleanup()
 end
 
 -- *********************************************************************
-
-function open_files()
-  logfiles        = {}
-  logfiles.auth1  = io.open("/var/log/auth.log",  "a")
-  logfiles.mail   = io.open("/var/log/mail.log",  "a")
-  logfiles.daemon = io.open("/var/log/daemon.log","a")
-  logfiles.kern   = io.open("/var/log/kern.log",  "a")
-  logfiles.cron1  = io.open("/var/log/cron.log",  "a")
-  logfiles.local5 = io.open("/var/log/local5.log","a")
-  logfiles.local6 = io.open("/var/log/local6.log","a")
-  logfiles.local0 = io.open("/var/log/local.log" ,"a")
-  logfiles.user   = io.open("/var/log/misc.log",  "a")
-  
-  logfiles.local1 = logfiles.local0
-  logfiles.local2 = logfiles.local0
-  logfiles.local3 = logfiles.local0
-  logfiles.local4 = logfiles.local0
-  logfiles.local7 = logfiles.local0
-end
-
-homebase = host("74.173.118.3")
-
--- **************************************************************
 
 function log(msg)
   if msg.remote == false then
@@ -110,7 +126,7 @@ function log(msg)
     log_to_file(logfiles[msg.facility],msg)
   end
   
-  sshd(msg)
+  ssh.log(msg)
   
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
@@ -123,26 +139,13 @@ end
 function reload_signal()
   if logfiles ~= nil then
     cleanup()
-    open_files()
   end
   
+  open_files()
   I_log("debug","signal received loud and clear; reset logfiles")
 end
 
 -- *************************************************************
-
-function log_to_file(file,msg)
-  file:write(string.format(
-        "%s %s %s: %s\n",
-        os.date("%b %d %H:%M:%S",msg.timestamp),
-        msg.host,
-        msg.program,
-        msg.msg
-  ));
-  file:flush()
-end
-
--- ******************************************************************
 
 if logfiles == nil then
   open_files()
@@ -152,4 +155,3 @@ alarm("60m")
 alarm_handler()
 I_log("debug","reloaded script")
 I_log("debug",string.format("relaying to %s",tostring(homebase)))
-

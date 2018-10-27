@@ -61,6 +61,9 @@
 --      2. script       - just the script name
 --
 -- ****************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals script alarm_handler
+-- luacheck: globals log reload_signal cleanup
 
 function log(msg)
   local pid
@@ -90,7 +93,7 @@ end
 function reload_signal()
   log{
         host      = "(internal)",
-        program   = script      -- "script" contains the script name
+        program   = script,     -- "script" contains the script name
         facility  = "syslog",
         level     = "debug",
         timestamp = os.time(),

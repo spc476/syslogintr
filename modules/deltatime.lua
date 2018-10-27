@@ -24,9 +24,9 @@
 -- Returns a string that represents the output from os.difftime()
 --
 -- ******************************************************************
+-- luacheck: ignore 611
 
-function delta_time(diff)
-
+return function(diff)
   if diff == 0 then return "0s" end
   
   local SECSMIN  = 60.0

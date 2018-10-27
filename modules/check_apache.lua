@@ -36,23 +36,25 @@
 -- This module requires the use of "wget".
 --
 -- *********************************************************************
+-- luacheck: ignore 611
 
-require "I_log"
-require "deltatime"
-require "sendmail"
+local I_log      = require "I_log"
+local I_prlog    = require "I_prlog"
+local send_email = require "sendmail"
+local deltatime  = require "deltatime"
 
 -- ************************************************************************
 -- NO USER SERVICABLE PARTS PAST HERE---YOU SHOULD KNOW WHAT YOU ARE DOING!
 -- ************************************************************************
 
-function check_webserver(params)
+return function(params)
   local res   = {}
   local cmd   = "wget"
   
   if params.user then
     cmd = cmd .. " --user " .. params.user
     if params.password then
-      cmd = cmd .. "--password " .. password
+      cmd = cmd .. "--password " .. params.password
     end
   end
   cmd = cmd .. " -O - " .. params.url .. " 2>/dev/null"
@@ -66,12 +68,12 @@ function check_webserver(params)
   
   stats:close()
   
-  setmetatable(res,{ __index = function(t,k) return 0 end } )
+  setmetatable(res,{ __index = function() return 0 end } )
   local msg = string.format("%s %s %s %s %s %s %s %s %s",
                 res['Total Accesses'],
                 res['Total kBytes'],
                 res['CPULoad'],
-                delta_time(res['Uptime']),
+                deltatime(res['Uptime']),
                 res['ReqPerSec'],
                 res['BytesPerSec'],
                 res['BytesPerReq'],

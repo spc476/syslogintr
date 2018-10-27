@@ -26,13 +26,49 @@
 -- I also convert a bunch of thin logs from Postfix into one fat log message.
 --
 -- ************************************************************************
+-- luacheck: ignore 611
+-- luacheck: ignore host alarm relay
+-- luacheck: globals logfiles cleanup alarm_handler log reload_signal
 
-require "I_log"
-require "check_ospf"
-require "postfix-mailsummary"
-require "ssh-iptables"
+local I_log               = require "I_log"
+local check_ospf          = require "check_ospf"
+local postfix_mailsummary = require "postfix-mailsummary"
+local ssh                 = require "ssh-iptables"
+
+local homebase = host("74.173.118.3")
 
 -- **********************************************************************
+
+local function open_files()
+  logfiles        = {}
+  logfiles.auth1  = io.open("/var/log/auth.log",  "a")
+  logfiles.auth2  = io.open("/var/log/auth2.log", "a")
+  logfiles.mail   = io.open("/var/log/mail.log",  "a")
+  logfiles.daemon = io.open("/var/log/daemon.log","a")
+  logfiles.kern   = io.open("/var/log/kern.log",  "a")
+  logfiles.cron1  = io.open("/var/log/cron.log",  "a")
+  logfiles.misc   = io.open("/var/log/misc.log",  "a")
+  logfiles.local0 = io.open("/var/log/local0.log","a")
+  logfiles.local1 = io.open("/var/log/local1.log","a")
+  logfiles.local2 = io.open("/var/log/local.log" ,"a")
+  logfiles.local4 = io.open("/var/log/local4.log","a")
+  logfiles.user   = io.open("/var/log/misc.log","a")
+end
+
+-- **************************************************************
+
+local function log_to_file(file,msg)
+  file:write(string.format(
+        "%s %s %s: %s\n",
+        os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.host,
+        msg.program,
+        msg.msg
+  ));
+  file:flush()
+end
+
+-- ******************************************************************
 
 function cleanup()
   logfiles.auth1:close()
@@ -50,29 +86,8 @@ end
 
 -- *********************************************************************
 
-function open_files()
-  logfiles        = {}
-  logfiles.auth1  = io.open("/var/log/auth.log",  "a")
-  logfiles.auth2  = io.open("/var/log/auth2.log", "a")
-  logfiles.mail   = io.open("/var/log/mail.log",  "a")
-  logfiles.daemon = io.open("/var/log/daemon.log","a")
-  logfiles.kern   = io.open("/var/log/kern.log",  "a")
-  logfiles.cron1  = io.open("/var/log/cron.log",  "a")
-  logfiles.misc   = io.open("/var/log/misc.log",  "a")
-  logfiles.local0 = io.open("/var/log/local0.log","a")
-  logfiles.local1 = io.open("/var/log/local1.log","a")
-  logfiles.local2 = io.open("/var/log/local.log" ,"a")
-  logfiles.local4 = io.open("/var/log/local4.log","a")
-  logfiles.user   = io.open("/var/log/misc.log","a")
-end
-
-homebase = host("74.173.118.3")
-alarm("60m")
-
--- **************************************************************
-
 function alarm_handler()
-  sshd_remove()
+  ssh.remove()
 end
 
 -- **************************************************************
@@ -103,7 +118,7 @@ function log(msg)
     log_to_file(logfiles[msg.facility],msg)
   end
   
-  sshd(msg)
+  ssh.log(msg)
   
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
@@ -123,23 +138,10 @@ end
 
 -- *************************************************************
 
-function log_to_file(file,msg)
-  file:write(string.format(
-        "%s %s %s: %s\n",
-        os.date("%b %d %H:%M:%S",msg.timestamp),
-        msg.host,
-        msg.program,
-        msg.msg
-  ));
-  file:flush()
-end
-
--- ******************************************************************
-
 if logfiles == nil then
   open_files()
 end
 
+alarm("60m")
 I_log("debug","reloaded script")
 I_log("debug",string.format("relaying to %s",tostring(homebase)))
-

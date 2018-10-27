@@ -40,8 +40,9 @@
 --      print(template(body,callbacks,times_called))
 --
 -- **********************************************************************
+-- luacheck: ignore 611
 
-function template(text,callbacks,data)
+return function(text,callbacks,data)
   local function cmd(tag)
     local word = string.sub(tag,3,-3)
     

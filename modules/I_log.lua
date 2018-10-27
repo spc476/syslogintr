@@ -25,24 +25,17 @@
 --
 -- *******************************************************************
 -- luacheck: ignore 611
--- luacheck: globals I_prlog I_log log script
+-- luacheck: globals log script
 
-function I_prlog(program,level,msg)
-  log{
+return function(level,msg)
+  log {
         host      = "(internal)",
         remote    = false,
-        program   = program,
+        program   = script,
         pid       = 0,
-        facility  = "syslog",
+        facility  = 'syslog',
         level     = level,
         timestamp = os.time(),
         msg       = msg
   }
 end
-
--- *******************************************************************
-
-function I_log(level,msg)
-  I_prlog(script,level,msg)
-end
-

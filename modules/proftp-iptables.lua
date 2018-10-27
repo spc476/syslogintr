@@ -33,18 +33,34 @@
 --      iptables -A INPUT -p tcp --dport 21 -j proftp-block
 --
 -- ***********************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals proftp_blocked log remove cleanup
 
-require "I_log"
+local os     = require "os"
+local string = require "string"
+local table  = require "table"
+local I_log  = require "I_log"
+
+local _VERSION     = _VERSION
+local setmetatable = setmetatable
+
+if _VERSION == "Lua 5.1" then
+  module(...)
+else
+  _ENV = {}
+end
+
+-- ********************************************************************
 
 if proftp_blocked == nil then
   proftp_blocked = {}
-  setmetatable(proftp_blocked,{ __index = function(t,k) return 0 end })
+  setmetatable(proftp_blocked,{ __index = function() return 0 end })
   os.execute("iptables --table filter -F proftp-block")
 end
 
 -- ********************************************************************
 
-function proftp(msg)
+function log(msg)
   if msg.remote   == true      then return end
   if msg.program  ~= "proftpd" then return end
   if msg.facility ~= "daemon"  then return end
@@ -68,7 +84,7 @@ end
 
 -- **************************************************************
 
-function proftp_remove()
+function remove()
   local now = os.time()
   
   while #proftp_blocked > 0 do
@@ -87,11 +103,10 @@ end
 
 -- ****************************************************************
 
-function sshd_cleanup()
+function cleanup()
   proftp_blocked = {}
-  setmetatable(proftp_blocked,{ __index = function(t,k) return 0 end })
+  setmetatable(proftp_blocked,{ __index = function() return 0 end })
   os.execute("iptables --table filter -F proftp-block")
 end
 
 -- *****************************************************************
-

@@ -23,11 +23,11 @@
 -- resource usage on such a server.
 --
 -- *************************************************************************
+-- luacheck: ignore 611 631
 
-require "I_log"
+local I_prlog = require "I_prlog"
 
-function log_bean()
-  local uid
+return function()
   local resource
   local held
   local maxheld
@@ -36,18 +36,19 @@ function log_bean()
   local failcnt
   local line
   local file = io.open("/proc/user_beancounters","r")
+  local _
   
-  line = file:read("*l") -- burn Version line
-  line = file:read("*l") -- burn header line
+  _    = file:read("*l") -- burn Version line
+  _    = file:read("*l") -- burn header line
   line = file:read("*l") -- first line of read input
   
-  uid,resource,held,maxheld,barrier,limit,failcnt = line:match("^%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)")
+  _,resource,held,maxheld,barrier,limit,failcnt = line:match("^%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)")
   if tonumber(failcnt) > 0 then
     I_prlog("check/beancounters","notice",string.format("%s h=%s m=%s b=%s l=%s f=%s\n",resource,held,maxheld,barrier,limit,failcnt))
   end
   
-  for line in file:lines() do
-    resource,held,maxheld,barrier,limit,failcnt = line:match("^%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)")
+  for aline in file:lines() do
+    resource,held,maxheld,barrier,limit,failcnt = aline:match("^%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)%s+(%S+)")
     if tonumber(failcnt) > 0 then
       I_prlog("check/beancounters","notice",string.format("%s h=%s m=%s b=%s l=%s f=%s\n",resource,held,maxheld,barrier,limit,failcnt))
     end

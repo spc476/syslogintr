@@ -25,6 +25,8 @@
 -- ./syslogintr --ipv4 --ipv6 --local --debug --foreground debug.lua
 --
 -- ******************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals log
 
 function log(msg)
   io.stdout:write(string.format("Request:\n"))

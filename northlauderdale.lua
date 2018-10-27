@@ -27,21 +27,33 @@
 -- This is a modified version of the redhat.lua script.
 --
 -- **************************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals host relay alarm
+-- luacheck: globals alarm_handler cleanup reload_signal log
 
-require "I_log"
-require "check_apache"
-require "log_beancounter"
+local check_apache    = require "check_apache"
+local log_beancounter = require "log_beancounter"
+
+local messages  = io.stdout
+local secure    = io.stdout
+local maillog   = io.stdout
+local cron      = io.stdout
+local spooler   = io.stdout
+local boot      = io.stdout
+local local4    = io.stdout
+local webserver = io.stdout
+local homebase  = host("lucy.roswell.conman.org")
 
 -- **********************************************************************
 
 function alarm_handler()
-  check_webserver{
-        url     = "http://localhost/server-status\?auto",
+  check_apache {
+        url     = "http://localhost/server-status/?auto",
         from    = "root@northlauderdale.pickint.net",
         to      = { "spc@conman.org" , "spc@pickint.net" },
         subject = "NORTHLAUDERDALE WEBSEVER DOWN!"
   }
-  log_bean()
+  log_beancounter()
 end
 
 -- ******************************************************************
@@ -72,19 +84,15 @@ end
 -- *********************************************************************
 
 local function openfiles()
-  messages = io.open("/var/log/messages"  ,"a") or io.stdout
-  secure   = io.open("/var/log/secure"    ,"a") or io.stdout
-  maillog  = io.open("/var/log/maillog"   ,"a") or io.stdout
-  cron     = io.open("/var/log/cron"      ,"a") or io.stdout
-  spooler  = io.open("/var/log/spooler"   ,"a") or io.stdout
-  boot     = io.open("/var/log/boot.log"  ,"a") or io.stdout
-  local4   = io.open("/var/log/local4.log","a") or io.stdout
-  webserver = io.open("/var/log/webserver","a") or io.stdout
+  messages  = io.open("/var/log/messages"  ,"a") or io.stdout
+  secure    = io.open("/var/log/secure"    ,"a") or io.stdout
+  maillog   = io.open("/var/log/maillog"   ,"a") or io.stdout
+  cron      = io.open("/var/log/cron"      ,"a") or io.stdout
+  spooler   = io.open("/var/log/spooler"   ,"a") or io.stdout
+  boot      = io.open("/var/log/boot.log"  ,"a") or io.stdout
+  local4    = io.open("/var/log/local4.log","a") or io.stdout
+  webserver = io.open("/var/log/webserver" ,"a") or io.stdout
 end
-
-
-homebase = host("lucy.roswell.conman.org")
-openfiles()
 
 -- *********************************************************************
 
@@ -96,7 +104,7 @@ end
 -- *********************************************************************
 
 local function logfile(msg,file,flushp)
-  local flushp = flushp or false
+  flushp = flushp or false
   
   if msg.remote == false then
     msg.host = "localhost"
@@ -133,13 +141,13 @@ function log(msg)
   if msg.facility == 'local6'
   and msg.level    == 'err'
   and msg.msg:match("(fork)") then
-    log_bean()
+    log_beancounter()
   end
   
   if msg.facility == 'cron1' and
      msg.level    == 'info' and
      msg.msg:match("(fork)") then
-        log_bean()
+        log_beancounter()
   end
   
   -- ===================================================
@@ -203,6 +211,7 @@ end
 
 -- ********************************************************************
 
+openfiles()
 alarm("60m")
 alarm_handler()
-log_bean()
+log_beancounter()

@@ -29,9 +29,11 @@
 --              params.to       -- To: address (can be an array)
 --
 -- *********************************************************************
+-- luacheck: ignore 611
 
-require "template"
-require "sendmail"
+local I_log    = require "I_log"
+local template = require "template"
+local sendmail = require "sendmail"
 
 -- ********************************************************************
 
@@ -61,7 +63,7 @@ HELP!
 -- **********************************************************************
 
 local function notify(params,email,msg)
-  send_email{
+  sendmail{
         from = params.from or "root@conman.org",
         to   = params.to   or "spc@conman.org",
         subject = email.subject,
@@ -75,7 +77,7 @@ end
 
 -- ***********************************************************************
 
-function check_ospf(msg,params)
+return function(msg,params)
   if string.match(msg.msg,".*(OSPF%-5%-ADJCHG.*Neighbor Down).*") then
     I_log("crit","OSPF neighbor down")
     notify(params,email_bad,msg)

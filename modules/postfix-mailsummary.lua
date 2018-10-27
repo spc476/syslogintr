@@ -24,6 +24,8 @@
 -- email have been collected, a summary (fat logging) is generated.
 --
 -- *********************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals maillist
 
 if maillist == nil then -- protect against reloading
   maillist = {}         -- used to store loglines as they come in
@@ -39,7 +41,7 @@ end
 --
 -- *********************************************************************
 
-function postfix_mailsummary(msg)
+return function(msg)
   -- ==============================================================
   -- if we're not postfix logging to mail/info, exit early
   -- ==============================================================
@@ -52,11 +54,11 @@ function postfix_mailsummary(msg)
   local id
   local data
   
-  local function getemail(id)
-    if maillist[id] == nil then
-      maillist[id] = {}
+  local function getemail(key)
+    if maillist[key] == nil then
+      maillist[key] = {}
     end
-    return maillist[id]
+    return maillist[key]
   end
   
   if string.match(msg.msg,'^%S+%: client=.*') then

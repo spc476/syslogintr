@@ -482,10 +482,10 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
-  g_L = lua_open();
+  g_L = luaL_newstate();
   if (g_L == NULL)
   {
-    perror("lua_open()");
+    perror("luaL_newstate()");
     return EXIT_FAILURE;
   }
   

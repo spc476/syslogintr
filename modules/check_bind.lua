@@ -33,19 +33,20 @@
 --      params.body             -- body of the email
 --
 -- **********************************************************************
+-- luacheck: ignore 611
 
-require "I_log"
-require "sendmail"
+local I_log    = require "I_log"
+local sendmail = require "sendmail"
 
 local namedpid = "/var/run/named.pid"
 
 -- *********************************************************************
 
-function check_nameserver(params)
+return function(params)
   local pidfile = io.open(namedpid,"r")
   if pidfile == nil then
     I_log("crit","NAME SERVER NOT RUNNING (crash?)")
-    send_email{
+    sendmail {
         from    = params.from    or "root@conman.org",
         to      = params.to      or "spc@conman.org",
         subject = params.subject or "NAME SERVER NOT RUNNING (crash?)",
@@ -62,7 +63,7 @@ function check_nameserver(params)
   local exefile = io.open("/proc/" .. pid)
   if exefile == nil then
     I_log("crit","NAME SERVER NOT RUNNING")
-    send_email{
+    sendmail {
         from    = params.from    or "root@conman.org",
         to      = params.to      or "spc@conman.org",
         subject = params.subject or "NAME SERVER NOT RUNNING",

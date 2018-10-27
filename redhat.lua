@@ -32,15 +32,15 @@
 -- required.
 --
 -- *******************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals cleanup reload_signal log
 
-function cleanup()
-  messages:close()
-  secure:close()
-  maillog:close()
-  cron:close()
-  spooler:close()
-  boot:close()
-end
+local messages = io.stdout
+local secure   = io.stdout
+local maillog  = io.stdout
+local cron     = io.stdout
+local spooler  = io.stdout
+local boot     = io.stdout
 
 -- *********************************************************************
 
@@ -57,15 +57,8 @@ openfiles()
 
 -- *********************************************************************
 
-function reload_signal()
-  cleanup()
-  openfiles()
-end
-
--- *********************************************************************
-
 local function logfile(msg,file,flushp)
-  local flushp = flushp or false
+  flushp = flushp or false
   
   if msg.remote == false then
     msg.host = "localhost"
@@ -89,6 +82,24 @@ local function everybody(msg)
   local out = io.popen("/usr/bin/wall","w")
   logfile(msg,out)
   out:close()
+end
+
+-- *********************************************************************
+
+function cleanup()
+  messages:close()
+  secure:close()
+  maillog:close()
+  cron:close()
+  spooler:close()
+  boot:close()
+end
+
+-- *********************************************************************
+
+function reload_signal()
+  cleanup()
+  openfiles()
 end
 
 -- ******************************************************************
@@ -140,4 +151,3 @@ function log(msg)
 end
 
 -- ********************************************************************
-

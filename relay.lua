@@ -24,8 +24,11 @@
 -- standard, but it's a format I like that's easy to read.
 --
 -- **********************************************************************
+-- luacheck: ignore 611
+-- luacheck: globals relay host
+-- luacheck: globals logfile log
 
-homebase = host("lucy.roswell.conman.org")
+local homebase = host("lucy.roswell.conman.org")
 if logfile == nil then
   logfile = io.open("/tmp/log","a")
 end

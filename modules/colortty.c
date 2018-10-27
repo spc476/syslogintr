@@ -35,6 +35,10 @@
 *
 **********************************************************************/
 
+#ifdef __linux__
+#  define _GNU_SOURCE
+#endif
+
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>
@@ -169,8 +173,8 @@ int luaopen_colortty(lua_State *L)
     m_height = 24;
   }
   
-  lua_register(L,"colortty",colortty);
-  return 0;
+  lua_pushcfunction(L,colortty);
+  return 1;
 }
 
 /**************************************************************************/

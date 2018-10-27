@@ -31,8 +31,23 @@
 --
 -- ***********************************************************************
 -- luacheck: ignore 611
--- luacheck: globals ssh_blocked sshd I_log sshd_remove sshd_cleanup
-require "I_log"
+-- luacheck: globals ssh_blocked log remove cleanup
+
+local os     = require "os"
+local string = require "string"
+local table  = require "table"
+local I_log  = require "I_log"
+
+local _VERSION     = _VERSION
+local setmetatable = setmetatable
+
+if _VERSION == "Lua 5.1" then
+  module(...)
+else
+  _ENV = {}
+end
+
+-- ********************************************************************
 
 if ssh_blocked == nil then
   ssh_blocked = {}
@@ -42,7 +57,7 @@ end
 
 -- ********************************************************************
 
-function sshd(msg)
+function log(msg)
   if msg.remote   == true    then return end
   if msg.program  ~= "sshd"  then return end
   if msg.facility ~= "auth2" then return end
@@ -66,7 +81,7 @@ end
 
 -- **************************************************************
 
-function sshd_remove()
+function remove()
   local now = os.time()
   
   while #ssh_blocked > 0 do
@@ -93,7 +108,7 @@ end
 
 -- ****************************************************************
 
-function sshd_cleanup()
+function cleanup()
   ssh_blocked = {}
   setmetatable(ssh_blocked,{ __index = function() return 0 end })
   os.execute("iptables --table filter -F ssh-block")
@@ -101,3 +116,6 @@ end
 
 -- *****************************************************************
 
+if _VERSION >= "Lua 5.2" then
+  return _ENV
+end

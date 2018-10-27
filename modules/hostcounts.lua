@@ -27,37 +27,38 @@
 --
 -- ***********************************************************************
 -- luacheck: ignore 611
--- luacheck: globals hostcount log_hostcounts inc_hostcount
--- luacheck: globals I_prlog
+-- luacheck: globals g_hostcount
 
-require "I_log"
+local string  = require "string"
+local I_prlog = require "I_prlog"
 
-if hostcount == nil then
-  hostcount = setmetatable({},{__index = function() return 0 end })
+local pairs   = pairs
+
+if g_hostcount == nil then
+  g_hostcount = setmetatable({},{__index = function() return 0 end })
 end
 
 -- ********************************************************************
 
-function log_hostcounts()
-  local s = ""
+return {
+  inc = function(host)
+    g_hostcount[host] = g_hostcount[host] + 1
+  end,
   
-  for name,value in pairs(hostcount) do
-    s = s .. string.format("%s:%d ",name,value)
-    if hostcount[name] == 0 then
-      hostcount[name] = nil
-    else
-      hostcount[name] = 0
+  -- ======================================================
+  
+  log = function()
+    local s = ""
+    
+    for name,value in pairs(g_hostcount) do
+      s = s .. string.format("%s:%s",name,value)
+      if value == 0 then
+        g_hostcount[name] = nil
+      else
+        g_hostcount[name] = 0
+      end
     end
-  end
-  
-  I_prlog("summary/hosts","info",s)
-end
-
--- *********************************************************************
-
-function inc_hostcount(host)
-  hostcount[host] = hostcount[host] + 1
-end
-
--- ********************************************************************
-
+    
+    I_prlog("summary/hosts",'info',s)
+  end,
+}

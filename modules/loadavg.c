@@ -56,8 +56,8 @@ static int la_loadavg(lua_State *L)
 
 int luaopen_loadavg(lua_State *L)
 {
-  lua_register(L,"loadavg",la_loadavg);
-  return 0;
+  lua_pushcfunction(L,la_loadavg);
+  return 1;
 }
 
 /**************************************************************************/

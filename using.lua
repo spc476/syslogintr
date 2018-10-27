@@ -26,14 +26,12 @@
 --
 -- ************************************************************************
 -- luacheck: ignore 611
--- luacheck: globals logfile alarm logger reload_signal alarm_handler log
--- luacheck: globals host cleanup log_to_file log_hostcounts I_log
--- luacheck: globals sshd_remove sshd relay script inc_hosecount
--- luacheck: globals sshd_cleanup inc_hostcount
+-- luacheck: globals alarm host relay script
+-- luacheck: globals logfile alarm_handler log reload_signal cleanup
 
-require "I_log"
-require "hostcounts"
-require "ssh-iptables"
+local I_log      = require "I_log"
+local hostcounts = require "hostcounts"
+local ssh        = require "ssh-iptables"
 
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
@@ -41,9 +39,29 @@ end
 
 alarm("60m")
 
-logger = host("239.255.0.1")
+local logger = host("239.255.0.1")
 
 -- *******************************************************
+
+local function log_to_file(file,msg)
+  if msg.program == nil then
+    I_log("err","bad parse: " .. msg._RAW)
+    return
+  end
+  
+  file:write(string.format(
+        "%s\t%s\t%s\t%s\t%s\t%s\n",
+        os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.facility,
+        msg.level,
+        msg.host,
+        msg.program,
+        msg.msg
+  ))
+  --file:flush()
+end
+
+-- ********************************************************
 
 function reload_signal()
 
@@ -52,7 +70,7 @@ function reload_signal()
     logfile = io.open("/var/log/syslog","a") or io.stdout
   end
   
-  log_hostcounts()
+  hostcounts.log()
   I_log("debug","signal received loud and clear and reset logfile")
   
 end
@@ -61,8 +79,8 @@ end
 
 function alarm_handler()
   I_log("debug","Alarm clock");
-  log_hostcounts()
-  sshd_remove()
+  hostcounts.log()
+  ssh.remove()
 end
 
 -- ******************************************************
@@ -137,9 +155,9 @@ function log(msg)
     end
   end
   
-  inc_hostcount(msg.host)
+  hostcounts.inc(msg.host)
   log_to_file(logfile,msg)
-  sshd(msg)
+  ssh.log(msg)
   relay(logger,msg)
 end
 
@@ -147,33 +165,13 @@ end
 
 function cleanup()
   I_log("debug","shutting down ... ")
-  sshd_cleanup()
+  ssh.cleanup()
   logfile:close()
 end
 
 -- *******************************************************
 
-function log_to_file(file,msg)
-  if msg.program == nil then
-    I_log("err","bad parse: " .. msg._RAW)
-    return
-  end
-  
-  file:write(string.format(
-        "%s\t%s\t%s\t%s\t%s\t%s\n",
-        os.date("%b %d %H:%M:%S",msg.timestamp),
-        msg.facility,
-        msg.level,
-        msg.host,
-        msg.program,
-        msg.msg
-  ))
-  --file:flush()
-end
-
--- ********************************************************
-
 I_log("debug","path:  " .. package.path)
 I_log("debug","reloaded " .. script)
-log_hostcounts()
+hostcounts.log()
 I_log("debug","relaying to " .. tostring(logger))

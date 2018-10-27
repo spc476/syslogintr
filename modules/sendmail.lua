@@ -30,8 +30,9 @@
 --              email.body              -- body of email
 --
 -- *********************************************************************
+-- luacheck: ignore 611
 
-require "I_log"
+local I_log = require "I_log"
 
 local sendmail = "/usr/sbin/sendmail"
 
@@ -59,14 +60,13 @@ Date: %s
         os.date("%a, %d %b %Y %H:%M:%S %Z",os.time()),
         email.body))
   exec:close()
-  exec = nil
   
   I_log("debug","sent email to " .. email.to)
 end
 
 -- *********************************************************************
 
-function send_email(email)
+return function(email)
   if type(email.to) == 'table' then
     for i = 1 , #email.to do
       send_the_email{
