@@ -63,6 +63,7 @@ local failed do
   local id = lpeg.P"invalid user "^-1 * (lpeg.P(1) - lpeg.P" ")^1
   local ip = lpeg.P"::ffff:"^-1 * lpeg.C(IP)
   failed   = lpeg.P"Failed password for " * id * " from " * ip
+           + lpeg.P"Did not receive identification string from " * ip
 end
 
 function log(msg)
