@@ -37,6 +37,8 @@ local os     = require "os"
 local string = require "string"
 local table  = require "table"
 local I_log  = require "I_log"
+local lpeg   = require "lpeg"
+local IP     = require "org.conman.parsers.ip-text".IPv4
 
 local _VERSION     = _VERSION
 local setmetatable = setmetatable
@@ -57,13 +59,19 @@ end
 
 -- ********************************************************************
 
+local failed do
+  local id = lpeg.P"invalid user "^-1 * (lpeg.P(1) - lpeg.P" ")^1
+  local ip = lpeg.P"::ffff:"^-1 * lpeg.C(IP)
+  failed   = lpeg.P"Failed password for " * id * " from " * ip
+end
+
 function log(msg)
   if msg.remote   == true    then return end
   if msg.program  ~= "sshd"  then return end
   if msg.facility ~= "auth2" then return end
   if msg.level    ~= "info"  then return end
   
-  local ip = string.match(msg.msg,"^Failed password for .* from ([%d%.]+) .*")
+  local ip = failed:match(msg.msg)
   if ip == nil then return end
   
   I_log("debug","Found IP:" .. ip)
