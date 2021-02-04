@@ -53,6 +53,10 @@ local colors =
 function log(msg)
   local bar = string.format("\27[1;39m\27(0x\27(B%s",colors[msg.level])
   
+  if msg.host == '192.168.1.100' then
+    msg.program = msg.program:match('^saltmine%-2%s*(.*)')
+  end
+  
   io.stdout:write(colortty(string.format(
         "%s%15.15s %-15.15s %-6s %6s %s %s\n",
         colors[msg.level],
