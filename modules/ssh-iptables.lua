@@ -75,11 +75,11 @@ function log(msg)
   local ip = failed:match(msg.msg)
   if ip == nil then return end
   
-  I_log("debug","Found IP:" .. ip)
-  
   ssh_blocked[ip] = ssh_blocked[ip] + 1
+
+  I_log('debug',string.format("Found IP: %s %d",ip,ssh_blocked[ip]))
   
-  if ssh_blocked[ip] == 5 then
+  if ssh_blocked[ip] >= 5 then
     local cmd = "iptables --table filter --append ssh-block --source " .. ip .. " --jump REJECT"
     I_log("debug","Command to block: " .. cmd)
     os.execute(cmd)
