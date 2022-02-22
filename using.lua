@@ -58,7 +58,6 @@ local function log_to_file(file,msg)
         msg.program,
         msg.msg
   ))
-  --file:flush()
 end
 
 -- ********************************************************
@@ -87,29 +86,17 @@ end
 
 function log(msg)
 
-  -- ====================================================
-  -- My mac is including the hostname in the program portion
-  -- (or at least, that's how I'm parsing it).  Strip out the
-  -- hostname from anything sent by the Mac
-  -- ====================================================
+  -- ======================================================
+  -- The various Macs around me include the hostname in the
+  -- program portion of the message.  Strip those out.
+  -- ======================================================
   
-  if msg.host == '192.168.1.13' then
-    if msg.program:match('^marvin.') then
-      msg.program = msg.program:match('^marvin.(.*)')
-    end
-  end
-  
-  -- ====================================================
-  -- Bunny's machine is sending the hostname, which is
-  -- being interpreted as a program name.  This corrects
-  -- for that.
-  -- ====================================================
-  
-  if msg.host == '192.168.1.16'
-  or msg.host == 'fc00::3'
+  if msg.host == '192.168.1.13'
+  or msg.host == '192.168.1.100'
+  or msg.host == '192.168.1.105'
   then
-    local program = string.match(msg.program,'^.*%s+(.*)')
-    if program ~= nil then
+    local program = string.match(msg.program,"^.*%s+(.*)")
+    if program then
       msg.program = program
     end
   end
@@ -156,7 +143,9 @@ function log(msg)
   end
   
   hostcounts.inc(msg.host)
-  log_to_file(logfile,msg)
+  if msg.level ~= 'debug' then
+    log_to_file(logfile,msg)
+  end
   ssh.log(msg)
   relay(logger,msg)
 end
