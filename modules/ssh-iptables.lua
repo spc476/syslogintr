@@ -95,11 +95,11 @@ function remove()
   
   while #ssh_blocked > 0 do
     -- --------------------------------------------------------------------
-    -- block for a month (30d 10h 30m) as apparently botnets give up after
+    -- block for 15 days as apparently botnets give up after
     -- being blocked for two weeks.
     -- --------------------------------------------------------------------
     
-    if now - ssh_blocked[1].when < 2629800 then
+    if now - ssh_blocked[1].when < (15 * 86400) then
       return
     end
     
