@@ -34,6 +34,7 @@
 -- luacheck: globals ssh_blocked log remove cleanup
 
 local os     = require "os"
+local io     = require "io"
 local string = require "string"
 local table  = require "table"
 local I_log  = require "I_log"
@@ -42,6 +43,8 @@ local IP     = require "org.conman.parsers.ip-text".IPv4
 
 local _VERSION     = _VERSION
 local setmetatable = setmetatable
+local pairs        = pairs
+local tonumber     = tonumber
 
 if _VERSION == "Lua 5.1" then
   module(...)
@@ -90,8 +93,48 @@ end
 
 -- **************************************************************
 
+local parseline do
+  local Cg = lpeg.Cg
+  local Ct = lpeg.Ct
+  local R  = lpeg.R
+  local P  = lpeg.P
+  
+  local num   = R"09"^1 / tonumber
+  local field = R"!~"^1
+  local sep   = P" "^1
+  parseline = Ct(
+                    Cg(num  ,'num')         * sep
+                  * Cg(field,'packets')     * sep
+                  * Cg(field,'bytes')       * sep
+                  * Cg(field,'target')      * sep
+                  * Cg(field,'prot')        * sep
+                  * Cg(field,'opt')         * sep
+                  * Cg(field,'in')          * sep
+                  * Cg(field,'out')         * sep
+                  * Cg(field,'source')      * sep
+                  * Cg(field,'destination') * sep
+                  * Cg(field,'rule')        * sep
+                  * Cg(field,'why')
+                )
+end
+
 function remove()
-  local now = os.time()
+  local rules = io.open("iptables --list ssh-block -vn --line","r")
+  rules:read("*l")
+  rules:read("*l")
+  local list = {}
+  
+  for rule in rules:lines() do
+    local data = parseline:match(rule)
+    if data then
+      list[data.source] = data
+    else
+      I_log('error',"ssh-iptable parse error: %q",data)
+    end
+  end
+  
+  local now    = os.time()
+  local remove = {}
   
   while #ssh_blocked > 0 do
     -- --------------------------------------------------------------------
@@ -103,11 +146,18 @@ function remove()
       return
     end
     
-    local ip = ssh_blocked[1].ip
-    I_log("info","Removing IP block: " .. ip)
-    ssh_blocked[ip] = nil
-    table.remove(ssh_blocked,1)
-    os.execute("iptables --table filter -D ssh-block 1")
+    local entry = table.remove(ssh_blocked,1)
+    ssh_blocked[entry.ip] = nil
+    table.insert(remove,list[entry.ip])
+  end
+  
+  if #remove > 0 then
+    table.sort(remove,function(a,b) return a.num > b.num end)
+  
+    for _,item in pairs(remove) do
+      I_log("info",string.format("Removing IP block %d: %s",item.num,item.source))
+      os.execute("iptables --table filter -D ssh-block " .. item.num)
+    end
   end
   
   if #ssh_blocked > 0 then
