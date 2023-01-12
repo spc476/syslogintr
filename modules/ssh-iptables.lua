@@ -119,7 +119,12 @@ local parseline do
 end
 
 function remove()
-  local rules = io.open("/sbin/iptables --list ssh-block -vn --line","r")
+  local rules,err = io.open("/sbin/iptables --list ssh-block -vn --line","r")
+  if not rules then
+    I_log("error","/sbin/iptables: " .. err)
+    return
+  end
+  
   rules:read("*l")
   rules:read("*l")
   local list = {}
