@@ -37,7 +37,7 @@ local I_log               = require "I_log"
 local check_apache        = require "check_apache"
 local check_bind          = require "check_bind"
 local postfix_mailsummary = require "postfix-mailsummary"
-local ssh                 = require "ssh-iptables"
+--local ssh                 = require "ssh-iptables"
 
 local homebase = host("74.173.118.3")
 
@@ -81,13 +81,15 @@ function alarm_handler()
         from = "root@conman.org",
         to   = "spc@conman.org"
   }
+  --[[
   check_apache{
         url     = "http://www.conman.org/server-status/?auto",
         from    = "root@conman.org",
         to      = "spc@conman.org",
         subject = "WWW.CONMAN.ORG WEBSITE DOWN!"
   }
-  ssh.remove()
+  --]]
+  --ssh.remove()
 end
 
 -- **********************************************************************
@@ -102,7 +104,7 @@ function cleanup()
   logfiles.local6:close()
   logfiles.local0:close()
   logfiles.user:close()
-  ssh.cleanup()
+  --ssh.cleanup()
 end
 
 -- *********************************************************************
@@ -126,7 +128,7 @@ function log(msg)
     log_to_file(logfiles[msg.facility],msg)
   end
   
-  ssh.log(msg)
+  --ssh.log(msg)
   
   if postfix_mailsummary(msg) then
     relay(homebase,msg)
