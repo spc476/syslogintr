@@ -17,7 +17,7 @@
 --
 -- Comments, questions and criticisms can be sent to: sean@conman.org
 --
--- ********************************************************************
+-- ***************************************************************
 --
 -- collect logs from ssh, and if there are 5 fail attempts at logging in,
 -- block the offending IP address.
@@ -29,30 +29,31 @@
 -- This module assume the use of iptables.  It also adds rules to the
 -- main chain.  This should be fixed.
 --
--- ***********************************************************************
+-- ***************************************************************
 -- luacheck: ignore 611
--- luacheck: globals ssh_blocked log remove cleanup
+-- luacheck: globals ssh_blocked log cleanup
 
 local os     = require "os"
-local io     = require "io"
 local string = require "string"
-local table  = require "table"
 local I_log  = require "I_log"
 local lpeg   = require "lpeg"
 local IP     = require "org.conman.parsers.ip-text".IPv4
 
 local _VERSION     = _VERSION
 local setmetatable = setmetatable
-local pairs        = pairs
-local tonumber     = tonumber
 
 if _VERSION == "Lua 5.1" then
   module(...)
+  local exec = os.execute
+  os.execute = function(cmd)
+    local rc = exec(cmd)
+    return rc == 0,'exit',rc
+  end
 else
   _ENV = {}
 end
 
--- ********************************************************************
+-- ***************************************************************
 
 if ssh_blocked == nil then
   ssh_blocked = {}
@@ -60,7 +61,7 @@ if ssh_blocked == nil then
   os.execute("iptables --table filter -F ssh-block")
 end
 
--- ********************************************************************
+-- ***************************************************************
 
 local failed do
   local id = lpeg.P"invalid user "^-1 * (lpeg.P(1) - lpeg.P" ")^1
@@ -82,95 +83,26 @@ function log(msg)
 
   I_log('debug',string.format("Found IP: %s %d",ip,ssh_blocked[ip]))
   
-  if ssh_blocked[ip] == 5 then
+  if ssh_blocked[ip] >= 5 then
     local cmd = "iptables --table filter --append ssh-block --source " .. ip .. " --jump REJECT"
     I_log("debug","Command to block: " .. cmd)
-    os.execute(cmd)
-    I_log("info","Blocked " .. ip .. " from SSH")
-    table.insert(ssh_blocked,{ ip = ip , when = msg.timestamp} )
-  end
-end
-
--- **************************************************************
-
-local parseline do
-  local Cg = lpeg.Cg
-  local Ct = lpeg.Ct
-  local R  = lpeg.R
-  local P  = lpeg.P
-  
-  local num   = R"09"^1 / tonumber
-  local field = R"!~"^1
-  local sep   = P" "^1
-  parseline = Ct(
-                    Cg(num  ,'num')         * sep
-                  * Cg(field,'packets')     * sep
-                  * Cg(field,'bytes')       * sep
-                  * Cg(field,'target')      * sep
-                  * Cg(field,'prot')        * sep
-                  * Cg(field,'opt')         * sep
-                  * Cg(field,'in')          * sep
-                  * Cg(field,'out')         * sep
-                  * Cg(field,'source')      * sep
-                  * Cg(field,'destination') * sep
-                  * Cg(field,'rule')        * sep
-                  * Cg(field,'why')
-                )
-end
-
-function remove()
-  local rules,err = io.popen("/sbin/iptables --list ssh-block -vn --line","r")
-  if not rules then
-    I_log("error","/sbin/iptables: " .. err)
-    return
-  end
-  
-  rules:read("*l")
-  rules:read("*l")
-  local list = {}
-  
-  for rule in rules:lines() do
-    local data = parseline:match(rule)
-    if data then
-      list[data.source] = data
+    local okay,why,rc = os.execute(cmd)
+    if not okay then
+    I_log('debug',"iptables ruleset filled, removing rule")
+      os.execute("iptables --table filter -D ssh-bock 1")
+      okay,why,rc = os.execute(cmd)
+    end
+    
+    if okay then
+      I_log('info',"Blocked " .. ip .. "from SSH")
+      ssh_blocked[ip] = nil
     else
-      I_log('error',"ssh-iptable parse error: %q",data)
+      I_log('error',"Failed to block " .. ip .. " why=%q rc=%d",why,rc)
     end
-  end
-  
-  local now    = os.time()
-  local remove = {}
-  
-  while #ssh_blocked > 0 do
-    -- --------------------------------------------------------------------
-    -- block for 15 days as apparently botnets give up after
-    -- being blocked for two weeks.
-    -- --------------------------------------------------------------------
-    
-    if now - ssh_blocked[1].when < (15 * 86400) then
-      return
-    end
-    
-    local entry = table.remove(ssh_blocked,1)
-    ssh_blocked[entry.ip] = nil
-    table.insert(remove,list[entry.ip])
-  end
-  
-  if #remove > 0 then
-    table.sort(remove,function(a,b) return a.num > b.num end)
-  
-    for _,item in pairs(remove) do
-      I_log("info",string.format("Removing IP block %d: %s",item.num,item.source))
-      os.execute("iptables --table filter -D ssh-block " .. item.num)
-    end
-  end
-  
-  if #ssh_blocked > 0 then
-    I_log("debug",string.format("%d still ssh_blocked",#ssh_blocked))
   end
 end
 
--- ****************************************************************
+-- ***************************************************************
 
 function cleanup()
   ssh_blocked = {}
@@ -178,7 +110,7 @@ function cleanup()
   os.execute("iptables --table filter -F ssh-block")
 end
 
--- *****************************************************************
+-- ***************************************************************
 
 if _VERSION >= "Lua 5.2" then
   return _ENV
