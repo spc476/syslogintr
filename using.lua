@@ -79,7 +79,6 @@ end
 function alarm_handler()
   I_log("debug","Alarm clock");
   hostcounts.log()
-  ssh.remove()
 end
 
 -- ******************************************************
