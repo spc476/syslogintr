@@ -94,7 +94,7 @@ function log(msg)
     end
     
     if okay then
-      I_log('info',"Blocked " .. ip .. "from SSH")
+      I_log('info',"Blocked " .. ip .. " from SSH")
       ssh_blocked[ip] = nil
     else
       I_log('err',"Failed to block " .. ip .. " why=%q rc=%d",why,rc)
