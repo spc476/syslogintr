@@ -31,7 +31,7 @@
 --
 -- ***************************************************************
 -- luacheck: ignore 611
--- luacheck: globals ssh_blocked log cleanup
+-- luacheck: globals ssh_blocked log remove cleanup
 
 local os     = require "os"
 local string = require "string"
@@ -41,6 +41,7 @@ local IP     = require "org.conman.parsers.ip-text".IPv4
 
 local _VERSION     = _VERSION
 local setmetatable = setmetatable
+local pairs        = pairs
 
 if _VERSION == "Lua 5.1" then
   module(...)
@@ -56,8 +57,7 @@ end
 -- ***************************************************************
 
 if ssh_blocked == nil then
-  ssh_blocked = {}
-  setmetatable(ssh_blocked,{ __index = function() return 0 end })
+  ssh_blocked = setmetatable({},{ __index = function() return 0 end })
   os.execute("iptables --table filter -F ssh-block")
 end
 
@@ -83,7 +83,7 @@ function log(msg)
 
   I_log('debug',string.format("Found IP: %s %d",ip,ssh_blocked[ip]))
   
-  if ssh_blocked[ip] >= 5 then
+  if ssh_blocked[ip] == 5 then
     local cmd = "iptables --table filter --append ssh-block --source " .. ip .. " --jump REJECT"
     I_log("debug","Command to block: " .. cmd)
     local okay,why,rc = os.execute(cmd)
@@ -95,7 +95,6 @@ function log(msg)
     
     if okay then
       I_log('info',"Blocked " .. ip .. " from SSH")
-      ssh_blocked[ip] = nil
     else
       I_log('err',"Failed to block " .. ip .. " why=%q rc=%d",why,rc)
     end
@@ -104,9 +103,20 @@ end
 
 -- ***************************************************************
 
+function remove()
+  local new = setmetatable({},{ __index = function() return 0 end })
+  for ip,count in pairs(ssh_blocked) do
+    if count < 5 then
+      new[ip] = count
+    end
+  end
+  ssh_blocked = new
+end
+
+-- ***************************************************************
+
 function cleanup()
-  ssh_blocked = {}
-  setmetatable(ssh_blocked,{ __index = function() return 0 end })
+  ssh_blocked = setmetatable({},{ __index = function() return 0 end })
   os.execute("iptables --table filter -F ssh-block")
 end
 
