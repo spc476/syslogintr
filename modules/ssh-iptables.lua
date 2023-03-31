@@ -96,7 +96,7 @@ function log(msg)
     if okay then
       I_log('info',"Blocked " .. ip .. " from SSH")
     else
-      I_log('err',"Failed to block " .. ip .. " why=%q rc=%d",why,rc)
+      I_log('err',string.format("Failed to block %s why=%q rc=%d",ip,why,rc))
     end
   end
 end
