@@ -88,8 +88,8 @@ function log(msg)
     I_log("debug","Command to block: " .. cmd)
     local okay,why,rc = os.execute(cmd)
     if not okay then
-    I_log('debug',"iptables ruleset filled, removing rule")
-      os.execute("iptables --table filter -D ssh-bock 1")
+      I_log('debug',"iptables ruleset filled, removing rule")
+      os.execute("iptables --table filter -D ssh-block 1")
       okay,why,rc = os.execute(cmd)
     end
     
