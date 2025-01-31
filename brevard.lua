@@ -39,7 +39,7 @@ local check_bind          = require "check_bind"
 local postfix_mailsummary = require "postfix-mailsummary"
 --local ssh                 = require "ssh-iptables"
 
-local homebase = host("74.173.118.3")
+local homebase = host("127.0.0.1")
 
 -- **********************************************************************
 
@@ -131,6 +131,8 @@ function log(msg)
   --ssh.log(msg)
   
   if postfix_mailsummary(msg) then
+    msg.remote = true
+    msg.host   = "71.19.142.20"
     relay(homebase,msg)
   end
   
