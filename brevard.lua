@@ -31,108 +31,41 @@
 -- ***************************************************************************
 -- luacheck: ignore 611
 -- luacheck: globals alarm host relay script
--- luacheck: globals logfiles alarm_handler log cleanup reload_signal
+-- luacheck: globals alarm_handler log cleanup reload_signal logfile
 
 local I_log               = require "I_log"
-local check_apache        = require "check_apache"
-local check_bind          = require "check_bind"
 local postfix_mailsummary = require "postfix-mailsummary"
---local ssh                 = require "ssh-iptables"
 
 local homebase = host("127.0.0.1")
 
 -- **********************************************************************
 
-local function open_files()
-  logfiles        = {}
-  logfiles.auth1  = io.open("/var/log/auth.log",  "a")
-  logfiles.mail   = io.open("/var/log/mail.log",  "a")
-  logfiles.daemon = io.open("/var/log/daemon.log","a")
-  logfiles.kern   = io.open("/var/log/kern.log",  "a")
-  logfiles.cron1  = io.open("/var/log/cron.log",  "a")
-  logfiles.user   = io.open("/var/log/misc.log",  "a")
-  logfiles.local0 = io.open("/var/log/local.log" ,"a")
-  logfiles.local1 = logfiles.local0
-  logfiles.local2 = logfiles.local0
-  logfiles.local3 = logfiles.local0
-  logfiles.local4 = logfiles.local0
-  logfiles.local5 = io.open("/var/log/local5.log","a")
-  logfiles.local6 = io.open("/var/log/local6.log","a")
-  logfiles.local7 = logfiles.local0
-end
-
--- **********************************************************************
-
 local function log_to_file(file,msg)
   file:write(string.format(
-        "%s %s %s: %s\n",
+        "%s\t%s\t%s\t%s\t%s\t%s\n",
         os.date("%b %d %H:%M:%S",msg.timestamp),
+        msg.facility,
+        msg.level,
         msg.host,
         msg.program,
         msg.msg
-  ));
-  file:flush()
+  ))
 end
 
 -- ******************************************************************
 
-function alarm_handler()
-  check_bind {
-        from = "root@conman.org",
-        to   = "spc@conman.org"
-  }
-  --[[
-  check_apache{
-        url     = "http://www.conman.org/server-status/?auto",
-        from    = "root@conman.org",
-        to      = "spc@conman.org",
-        subject = "WWW.CONMAN.ORG WEBSITE DOWN!"
-  }
-  --]]
-  --ssh.remove()
-end
-
--- **********************************************************************
-
 function cleanup()
-  logfiles.auth1:close()
-  logfiles.mail:close()
-  logfiles.daemon:close()
-  logfiles.kern:close()
-  logfiles.cron1:close()
-  logfiles.local5:close()
-  logfiles.local6:close()
-  logfiles.local0:close()
-  logfiles.user:close()
-  --ssh.cleanup()
+  logfile:close()
 end
 
 -- *********************************************************************
 
 function log(msg)
-  if msg.remote == false then
-    if msg.facility == 'auth2'
-       and msg.program == 'sshd'
-       and (msg.msg == 'Connection closed by 66.252.224.232'
-            or msg.msg == 'Connection closed by 66.252.227.77') then
-      return
-    end
-    
-    if msg.program == 'gld-pfc' then return end
-    msg.host = "brevard"
-  end
-  
-  if logfiles[msg.facility] == nil then
-    log_to_file(logfiles.user,msg)
-  else
-    log_to_file(logfiles[msg.facility],msg)
-  end
-  
-  --ssh.log(msg)
+  log_to_file(logfile,msg)
   
   if postfix_mailsummary(msg) then
     msg.remote = true
-    msg.host   = "71.19.142.20"
+    msg.host   = "66.252.224.242"
     relay(homebase,msg)
   end
   
@@ -141,21 +74,19 @@ end
 -- **************************************************************
 
 function reload_signal()
-  if logfiles ~= nil then
-    cleanup()
+  if logfile ~= nil then
+    logfile:close()
   end
   
-  open_files()
+  logfile = io.open("/var/log/syslog","a")
   I_log("debug","signal received loud and clear; reset logfiles")
 end
 
 -- *************************************************************
 
-if logfiles == nil then
-  open_files()
+if logfile == nil then
+  logfile = io.open("/var/log/syslog","a")
 end
 
-alarm("60m")
-alarm_handler()
 I_log("debug","reloaded script")
 I_log("debug",string.format("relaying to %s",tostring(homebase)))
