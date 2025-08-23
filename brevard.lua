@@ -50,6 +50,7 @@ local function log_to_file(file,msg)
         msg.program,
         msg.msg
   ))
+  file:flush()
 end
 
 -- ******************************************************************
