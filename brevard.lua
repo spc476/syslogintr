@@ -62,7 +62,9 @@ end
 -- *********************************************************************
 
 function log(msg)
-  log_to_file(logfile,msg)
+  if msg.level ~= 'debug' then
+    log_to_file(logfile,msg)
+  end
   
   if postfix_mailsummary(msg) then
     msg.remote = true
