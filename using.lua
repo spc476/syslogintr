@@ -94,6 +94,7 @@ function log(msg)
   if msg.host == '192.168.1.13'
   or msg.host == '192.168.1.100'
   or msg.host == '192.168.1.105'
+  or msg.host == '192.168.1.102'
   then
     local program = string.match(msg.program,"^.*%s+(.*)")
     if program then
@@ -126,7 +127,7 @@ function log(msg)
   -- ====================================================
   
   if msg.program == 'com.apple.usbmuxd' then
-    relay(logger,msg)
+--    relay(logger,msg)
     return
   end
   
@@ -147,7 +148,7 @@ function log(msg)
     log_to_file(logfile,msg)
   end
   ssh.log(msg)
-  relay(logger,msg)
+--  relay(logger,msg)
 end
 
 -- ********************************************************
@@ -163,4 +164,4 @@ end
 I_log("debug","path:  " .. package.path)
 I_log("debug","reloaded " .. script)
 hostcounts.log()
-I_log("debug","relaying to " .. tostring(logger))
+--I_log("debug","relaying to " .. tostring(logger))
