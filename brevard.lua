@@ -90,5 +90,5 @@ if logfile == nil then
   logfile = io.open("/var/log/syslog","a")
 end
 
-I_log("debug","reloaded script")
+I_log("info","reloaded script")
 I_log("debug",string.format("relaying to %s",tostring(homebase)))
