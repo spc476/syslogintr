@@ -82,7 +82,7 @@ function reload_signal()
   end
   
   logfile = io.open("/var/log/syslog","a")
-  I_log("debug","signal received loud and clear; reset logfiles")
+  I_log("info","signal received loud and clear; reset logfiles")
 end
 
 -- *************************************************************
