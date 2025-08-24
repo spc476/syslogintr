@@ -62,12 +62,13 @@ end
 -- *********************************************************************
 
 function log(msg)
+  relay(homebase,msg)
+  
   if msg.level == 'debug' then
     return
   end
   
   log_to_file(logfile,msg)
-  relay(homebase,msg)
   
   if postfix_mailsummary(msg) then
     log_to_file(logfile,msg)
