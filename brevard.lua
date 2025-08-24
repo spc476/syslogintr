@@ -70,12 +70,14 @@ function log(msg)
   
   log_to_file(logfile,msg)
   
+--[[  
   if postfix_mailsummary(msg) then
     log_to_file(logfile,msg)
     msg.remote = true
     msg.host   = "66.252.224.242"
     relay(homebase,msg)
   end
+--]]
 end
 
 -- **************************************************************
