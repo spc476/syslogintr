@@ -35,6 +35,7 @@ local ssh        = require "ssh-iptables"
 
 if logfile == nil then
   logfile = io.open("/var/log/syslog","a") or io.stdout
+  logfile:setvbuf('line')
 end
 
 alarm("60m")
@@ -67,6 +68,7 @@ function reload_signal()
   if logfile ~= io.stdout then
     logfile:close()
     logfile = io.open("/var/log/syslog","a") or io.stdout
+    logfile:setvbuf('line')
   end
   
   hostcounts.log()
