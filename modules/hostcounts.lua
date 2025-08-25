@@ -51,7 +51,7 @@ return {
     local s = ""
     
     for name,value in pairs(g_hostcount) do
-      s = s .. string.format("%s:%s",name,value)
+      s = s .. string.format(" %s:%s",name,value)
       if value == 0 then
         g_hostcount[name] = nil
       else
