@@ -69,6 +69,9 @@ function log(msg)
   end
   
   log_to_file(logfile,msg)
+  msg.remote = true
+  msg.host   = '66.252.224.242'
+  relay(homebase,msg)
   
 --[[  
   if postfix_mailsummary(msg) then
