@@ -61,7 +61,7 @@ function log(msg)
         "%s%15.15s %-15.15s %-6s %6s %s %s\n",
         colors[msg.level],
         msg.host,
-        msg.program,
+        msg.program or "",
         msg.facility,
         msg.level,
         bar, -- os.date("%b %d %H:%M:%S",msg.timestamp),
