@@ -40,7 +40,7 @@ end
 
 alarm("60m")
 
---local logger = host("239.255.0.1")
+local logger = host("232.0.0.1")
 
 -- *******************************************************
 
@@ -129,7 +129,7 @@ function log(msg)
   -- ====================================================
   
   if msg.program == 'com.apple.usbmuxd' then
---    relay(logger,msg)
+    relay(logger,msg)
     return
   end
   
@@ -150,7 +150,7 @@ function log(msg)
     log_to_file(logfile,msg)
   end
   ssh.log(msg)
---  relay(logger,msg)
+  relay(logger,msg)
 end
 
 -- ********************************************************
@@ -166,4 +166,4 @@ end
 I_log("debug","path:  " .. package.path)
 I_log("debug","reloaded " .. script)
 hostcounts.log()
---I_log("debug","relaying to " .. tostring(logger))
+I_log("debug","relaying to " .. tostring(logger))
