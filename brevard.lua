@@ -62,8 +62,6 @@ end
 -- *********************************************************************
 
 function log(msg)
-  relay(homebase,msg)
-  
   if msg.level == 'debug' then
     return
   end
