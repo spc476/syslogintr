@@ -50,10 +50,6 @@ return function(msg)
   if msg.facility ~= 'mail' then return false end
   if msg.level    ~= 'info' then return false end
   
---  local email
---  local id
---  local data
-  
   local function getemail(key)
     if maillist[key] == nil then
       maillist[key] = {}
