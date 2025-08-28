@@ -71,14 +71,13 @@ function log(msg)
   msg.host   = '66.252.224.242'
   relay(homebase,msg)
   
---[[  
-  if postfix_mailsummary(msg) then
-    log_to_file(logfile,msg)
-    msg.remote = true
-    msg.host   = "66.252.224.242"
-    relay(homebase,msg)
+  local postsummary = postfix_mailsummary(msg)
+  if postsummary then
+    log_to_file(logfile,postsummary)
+    postsummary.remote = true
+    postsummary.host   = '66.252.224.242'
+    relay(homebase,postsummary)
   end
---]]
 end
 
 -- **************************************************************

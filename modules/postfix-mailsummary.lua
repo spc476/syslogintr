@@ -35,7 +35,7 @@ end
 --
 -- postfix_mailsummary(msg)
 --
--- Return true if the msg should be logged.  Otherwise, return false.
+-- Return a new msg if the msg should be logged.  Otherwise, return false.
 -- This will accumulate loglines from Postfix until there's enough
 -- information (client, message-id, from, to) to log in a single line.
 --
@@ -46,13 +46,13 @@ return function(msg)
   -- if we're not postfix logging to mail/info, exit early
   -- ==============================================================
   
-  if string.find(msg.program,'postfix/',1,true) == nil then return true end
-  if msg.facility ~= 'mail' then return true end
-  if msg.level    ~= 'info' then return true end
+  if string.find(msg.program,'postfix/',1,true) == nil then return false end
+  if msg.facility ~= 'mail' then return false end
+  if msg.level    ~= 'info' then return false end
   
-  local email
-  local id
-  local data
+--  local email
+--  local id
+--  local data
   
   local function getemail(key)
     if maillist[key] == nil then
@@ -62,65 +62,60 @@ return function(msg)
   end
   
   if string.match(msg.msg,'^%S+%: client=.*') then
-    id,data      = string.match(msg.msg,'^(%S+)%: client=(.*)$')
-    if id == nil then
-      return true
+    local id,data = string.match(msg.msg,'^(%S+)%: client=(.*)$')
+    if id then
+      local email  = getemail(id)
+      email.client = data
     end
-    email        = getemail(id)
-    email.client = data
-    return false
     
   elseif string.match(msg.msg,'^%S+%: message%-id=.*') then
-    id,data  = string.match(msg.msg,'^(%S+)%: message%-id=%<(%S+)%>')
-    if id == nil then
-      return true
+    local id,data = string.match(msg.msg,'^(%S+)%: message%-id=%<(%S+)%>')
+    if id then
+      local email = getemail(id)
+      email.id    = data
     end
-    email    = getemail(id)
-    email.id = data
-    return false
     
   elseif string.match(msg.msg,'^%S+%: from=.*') then
-    id,data    = string.match(msg.msg,'^(%S+)%: from=%<(%S*)%>')
-    if id == nil then
-      return true
+    local id,data = string.match(msg.msg,'^(%S+)%: from=%<(%S*)%>')
+    if id then
+      local email = getemail(id)
+      email.from  = data
     end
-    email      = getemail(id)
-    email.from = data
-    return false
     
   elseif string.match(msg.msg,'^%S+%: to=.*') then
-    id,data  = string.match(msg.msg,'^(%S+)%: to=%<(%S+)%>')
-    if id == nil then
-      return true
+    local id,data = string.match(msg.msg,'^(%S+)%: to=%<(%S+)%>')
+    if id then
+      local email = getemail(id)
+      email.to    = data
     end
-    email    = getemail(id)
-    email.to = data
-    return false
     
   elseif string.match(msg.msg,'^%S+%: removed') then
-    id = string.match(msg.msg,'^(%S+)%:')
-    
-    if id == nil then
-      return true
+    local id = string.match(msg.msg,'^(%S+)%:')
+    if id then
+      local email  = getemail(id)
+      maillist[id] = nil
+      
+      return {
+        version   = msg.version,
+        facility  = msg.facility,
+        level     = msg.level,
+        timestamp = os.time(),
+        pid       = msg.pid,
+        host      = msg.host,
+        relay     = msg.relay,
+        port      = msg.port,
+        localaddr = msg.localaddr,
+        localport = msg.localport,
+        program   = "summary/mail",
+        msg       = string.format(
+                      "client=%s message-id=<%s> from=<%s> to=<%s>",
+                      email.client or "-",
+                      email.id     or "<>",
+                      email.from   or "<>",
+                      email.to     or "<>"
+                    ),
+      }
     end
-    
-    email = getemail(id)
-    
-    if email.client == nil then email.client = "(na)" end
-    if email.from   == nil then email.from   = ""     end
-    if email.to     == nil then email.to     = "(na)" end
-    if email.id     == nil then email.id     = "<na>" end
-    
-    msg.program = 'summary/mail'
-    msg.msg     = string.format(
-                        "client=%s message-id=<%s> from=<%s> to=<%s>",
-                        email.client,
-                        email.id,
-                        email.from,
-                        email.to
-                        )
-    maillist[id] = nil
-    return true
   end
   
   return false

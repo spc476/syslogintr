@@ -46,5 +46,5 @@ function log(msg)
         msg.program,
         msg.pid,
         msg.msg
-  ))  
+  ))
 end
